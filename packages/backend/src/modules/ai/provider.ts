@@ -9,6 +9,14 @@ type ParseExpensePrompt = {
   categories: string[];
 };
 
+const categoryInstruction = (categories: string[]) =>
+  [
+    "Extract one expense from the user's text. Return strict JSON only with keys amount, description, category, date, confidence, notes.",
+    `The "category" field MUST be exactly one of these strings (built-in labels plus this user's custom categories — use exact spelling from the list): ${categories.join(" | ")}.`,
+    'If the purchase does not clearly fit any label, use "Other".',
+    "amount, description, date: use null if uncertain. confidence: 0–1. notes: short strings about assumptions.",
+  ].join(" ");
+
 const toJsonBody = (input: ParseExpensePrompt) => ({
   model: env.OPENAI_MODEL,
   input: [
@@ -17,7 +25,7 @@ const toJsonBody = (input: ParseExpensePrompt) => ({
       content: [
         {
           type: "input_text",
-          text: "Extract a structured expense object. Return strict JSON only with keys amount, description, category, date, confidence, notes. If a field is uncertain, return null instead of guessing.",
+          text: categoryInstruction(input.categories),
         },
       ],
     },

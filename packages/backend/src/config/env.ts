@@ -18,7 +18,6 @@ const envSchema = z.object({
   CLIENT_ORIGIN: z.string().url().default("http://localhost:3000"),
   OPENAI_API_KEY: z.string().optional(),
   OPENAI_MODEL: z.string().default("gpt-4.1-mini"),
-  FORECAST_CACHE_TTL_MINUTES: z.coerce.number().int().positive().default(30),
 });
 
 const parsedEnv = envSchema.safeParse(process.env);

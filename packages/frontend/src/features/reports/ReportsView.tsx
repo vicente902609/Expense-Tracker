@@ -1,102 +1,186 @@
+import { useMemo } from "react";
 import type { Expense } from "@expense-tracker/shared";
-import { Box, Button, Stack, TextField, Typography } from "@mui/material";
+import { alpha } from "@mui/material/styles";
+import { Box, Stack, Typography } from "@mui/material";
 
-import { formatCurrency, getCategoryColor, getCategoryTotals, getDailySeries, getMonthlySeries, getWeeklySeries } from "../../lib/expense-ui.js";
-import { useReportFilters } from "./hooks/use-report-filters.js";
+import { DateFilter } from "../../components/DateFilter.js";
+import { useDateFilter } from "../../hooks/use-date-filter.js";
+import { daysInclusiveInRange, formatDateRangeLabel, type DateFilterKind } from "../../lib/date-filter.js";
+import {
+  type ChartSeriesPoint,
+  formatCurrency,
+  getCategoryColor,
+  getCategoryTotals,
+  getDailySeriesForRange,
+  getMonthlySeries,
+  getWeeklySeriesForRange,
+} from "../../lib/expense-ui.js";
+import { RADIUS_DENSE, sectionLabelSx, surfaceCard } from "../../theme/ui.js";
 
 type ReportsViewProps = {
   expenses: Expense[];
 };
 
+const chartTitleForKind = (kind: DateFilterKind) => {
+  if (kind === "today") {
+    return "Daily";
+  }
+  if (kind === "week") {
+    return "Weekly";
+  }
+  if (kind === "month") {
+    return "Monthly";
+  }
+  return "Range";
+};
+
+type SeriesResult = {
+  series: ChartSeriesPoint[];
+  bucketLabel: string;
+};
+
+const buildReportSeries = (kind: DateFilterKind, filtered: Expense[], fromIso: string, toIso: string): SeriesResult => {
+  if (kind === "today") {
+    return { series: getDailySeriesForRange(filtered, fromIso, toIso), bucketLabel: "day" };
+  }
+  if (kind === "week") {
+    return { series: getWeeklySeriesForRange(filtered, fromIso, toIso), bucketLabel: "week" };
+  }
+  if (kind === "month") {
+    return { series: getMonthlySeries(filtered), bucketLabel: "month" };
+  }
+
+  const days = daysInclusiveInRange(fromIso, toIso);
+  if (days <= 42) {
+    return { series: getDailySeriesForRange(filtered, fromIso, toIso), bucketLabel: "day" };
+  }
+  if (days <= 200) {
+    return { series: getWeeklySeriesForRange(filtered, fromIso, toIso), bucketLabel: "week" };
+  }
+  return { series: getMonthlySeries(filtered), bucketLabel: "month" };
+};
+
 export const ReportsView = ({ expenses }: ReportsViewProps) => {
-  const { changeMode, filteredExpenses, fromDate, mode, setFromDate, setToDate, toDate } = useReportFilters(expenses);
-  const series =
-    mode === "daily" || mode === "range"
-      ? getDailySeries(filteredExpenses)
-      : mode === "weekly"
-        ? getWeeklySeries(filteredExpenses)
-        : getMonthlySeries(filteredExpenses);
+  const { applyCustomRange, fromDate, kind, selectPreset, toDate } = useDateFilter("month", "reports");
+
+  const filteredExpenses = useMemo(
+    () => expenses.filter((expense) => expense.date >= fromDate && expense.date <= toDate),
+    [expenses, fromDate, toDate],
+  );
+
+  const { series, bucketLabel } = useMemo(
+    () => buildReportSeries(kind, filteredExpenses, fromDate, toDate),
+    [kind, filteredExpenses, fromDate, toDate],
+  );
+
   const maxValue = Math.max(...series.map((entry) => entry.total), 1);
   const categoryTotals = getCategoryTotals(filteredExpenses);
-  const average = series.length > 0 ? series.reduce((sum, entry) => sum + entry.total, 0) / series.length : 0;
-  const total = series[series.length - 1]?.total ?? 0;
+  const periodTotal = filteredExpenses.reduce((sum, expense) => sum + expense.amount, 0);
+  const averagePerBucket = series.length > 0 ? periodTotal / series.length : 0;
 
   return (
-    <Stack spacing={2} sx={{ px: { xs: 2, md: 3 }, py: { xs: 2.25, md: 3 }, maxWidth: 1100 }}>
-      <Box>
-        <Typography sx={{ fontSize: 12, fontWeight: 800, letterSpacing: "0.08em", color: "text.secondary", textTransform: "uppercase" }}>Reports</Typography>
-        <Typography variant="h5">Reports</Typography>
-        <Typography color="text.secondary">Daily, weekly, monthly, or custom range</Typography>
-      </Box>
-
-      <Stack spacing={1.5}>
-        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-          {[
-            { label: "Daily", value: "daily" },
-            { label: "Weekly", value: "weekly" },
-            { label: "Monthly", value: "monthly" },
-            { label: "Date range", value: "range" },
-          ].map((item) => (
-            <Button key={item.value} variant={mode === item.value ? "contained" : "outlined"} color="inherit" onClick={() => changeMode(item.value as "daily" | "weekly" | "monthly" | "range")}>
-              {item.label}
-            </Button>
-          ))}
-        </Stack>
-
-        <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
-          <TextField type="date" label="From" value={fromDate} onChange={(event) => setFromDate(event.target.value)} InputLabelProps={{ shrink: true }} />
-          <TextField type="date" label="To" value={toDate} onChange={(event) => setToDate(event.target.value)} InputLabelProps={{ shrink: true }} />
-        </Stack>
-      </Stack>
-
-      <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "minmax(0, 1fr) minmax(0, 1fr)" } }}>
-      <Box sx={{ borderRadius: 3, bgcolor: "rgba(55,55,52,0.92)", border: "1px solid rgba(255,255,255,0.08)", overflow: "hidden" }}>
-        <Box sx={{ p: 2, borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
-          <Typography sx={{ fontSize: 12, fontWeight: 800, letterSpacing: "0.08em", color: "text.secondary", textTransform: "uppercase" }}>{mode} spending</Typography>
-        </Box>
-        <Box sx={{ p: 2 }}>
-          <Box sx={{ height: 130, display: "flex", alignItems: "flex-end", gap: 1.2 }}>
-            {series.map((entry, index) => (
-              <Stack key={entry.key} sx={{ flex: 1, alignItems: "center" }} spacing={1}>
-                <Box
-                  sx={{
-                    width: "100%",
-                    height: `${Math.max((entry.total / maxValue) * 100, 12)}px`,
-                    borderRadius: "6px 6px 0 0",
-                    bgcolor: index === series.length - 1 ? "#4f8ff7" : "#9ec3ef",
-                  }}
-                />
-                <Typography sx={{ fontSize: 12, color: "text.secondary" }}>{entry.label}</Typography>
-              </Stack>
-            ))}
-          </Box>
-          <Typography sx={{ mt: 1.5, textAlign: "right", color: "text.secondary" }}>
-            Avg {formatCurrency(average)} · Latest {formatCurrency(total)}
+    <Stack spacing={2.5} sx={{ px: { xs: 2, md: 3 }, py: { xs: 2, md: 3 }, maxWidth: 1100, mx: "auto" }}>
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: { xs: "column", sm: "row" },
+          justifyContent: "space-between",
+          alignItems: { xs: "stretch", sm: "flex-start" },
+          gap: { xs: 2, sm: 2.5 },
+        }}
+      >
+        <Box sx={{ minWidth: 0, flex: { sm: "1 1 0%" } }}>
+          <Typography sx={(theme) => sectionLabelSx(theme)}>Reports</Typography>
+          <Typography variant="h5" sx={{ mt: 0.5 }}>
+            Spending insights
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+            Compare daily, weekly, monthly, or custom ranges
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1, fontWeight: 600 }}>
+            Showing {formatDateRangeLabel(fromDate, toDate)}
           </Typography>
         </Box>
+
+        <DateFilter
+          align="right"
+          fromDate={fromDate}
+          kind={kind}
+          labels={{ today: "Daily", week: "Weekly", month: "Monthly", range: "Date range" }}
+          scope="reports"
+          toDate={toDate}
+          onApplyRange={applyCustomRange}
+          onSelectPreset={selectPreset}
+        />
       </Box>
 
-      <Box sx={{ borderRadius: 3, bgcolor: "rgba(55,55,52,0.92)", border: "1px solid rgba(255,255,255,0.08)", overflow: "hidden" }}>
-        <Box sx={{ p: 2, borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
-          <Typography sx={{ fontSize: 12, fontWeight: 800, letterSpacing: "0.08em", color: "text.secondary", textTransform: "uppercase" }}>By category</Typography>
+      <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 1fr) minmax(0, 1fr)" } }}>
+        <Box sx={(theme) => ({ overflow: "hidden", ...surfaceCard(theme) })}>
+          <Box sx={(theme) => ({ p: 2, borderBottom: `1px solid ${alpha(theme.palette.common.white, 0.08)}` })}>
+            <Typography sx={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: "text.secondary", textTransform: "uppercase" }}>
+              {chartTitleForKind(kind)} · chart
+            </Typography>
+          </Box>
+          <Box sx={{ p: 2 }}>
+            {series.length === 0 ? (
+              <Typography sx={{ py: 2, color: "text.secondary" }}>No expenses in this date range.</Typography>
+            ) : (
+              <Box sx={{ height: { xs: 120, sm: 140 }, display: "flex", alignItems: "flex-end", gap: { xs: 0.75, sm: 1.2 } }}>
+                {series.map((entry, index) => (
+                  <Stack key={entry.key} sx={{ flex: 1, minWidth: 0, alignItems: "center" }} spacing={1}>
+                    <Box
+                      sx={(theme) => ({
+                        width: "100%",
+                        maxWidth: 48,
+                        height: `${Math.max((entry.total / maxValue) * 100, 12)}px`,
+                        borderTopLeftRadius: RADIUS_DENSE,
+                        borderTopRightRadius: RADIUS_DENSE,
+                        borderBottomLeftRadius: "3px",
+                        borderBottomRightRadius: "3px",
+                        bgcolor: index === series.length - 1 ? theme.palette.primary.main : alpha(theme.palette.primary.main, 0.35),
+                      })}
+                    />
+                    <Typography variant="caption" color="text.secondary" sx={{ textAlign: "center", lineHeight: 1.2 }}>
+                      {entry.label}
+                    </Typography>
+                  </Stack>
+                ))}
+              </Box>
+            )}
+            <Typography variant="body2" sx={{ mt: 1.5, textAlign: "right", color: "text.secondary" }}>
+              Total {formatCurrency(periodTotal)} · Avg {formatCurrency(averagePerBucket)} per {bucketLabel}
+            </Typography>
+          </Box>
         </Box>
-        <Stack spacing={1.5} sx={{ p: 2 }}>
-          {categoryTotals.map((entry) => {
-            const percent = total > 0 ? (entry.total / total) * 100 : 0;
 
-            return (
-              <Stack key={entry.category} direction="row" spacing={1.5} alignItems="center">
-                <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: getCategoryColor(entry.category) }} />
-                <Typography sx={{ width: 90, fontWeight: 700 }}>{entry.category}</Typography>
-                <Box sx={{ flex: 1, height: 6, borderRadius: 999, bgcolor: "rgba(255,255,255,0.08)" }}>
-                  <Box sx={{ width: `${Math.max(percent, 8)}%`, height: "100%", borderRadius: 999, bgcolor: getCategoryColor(entry.category) }} />
-                </Box>
-                <Typography sx={{ minWidth: 64, textAlign: "right", fontWeight: 800 }}>{formatCurrency(entry.total)}</Typography>
-              </Stack>
-            );
-          })}
-        </Stack>
-      </Box>
+        <Box sx={(theme) => ({ overflow: "hidden", ...surfaceCard(theme) })}>
+          <Box sx={(theme) => ({ p: 2, borderBottom: `1px solid ${alpha(theme.palette.common.white, 0.08)}` })}>
+            <Typography sx={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: "text.secondary", textTransform: "uppercase" }}>
+              By category
+            </Typography>
+          </Box>
+          <Stack spacing={1.5} sx={{ p: 2 }}>
+            {categoryTotals.length === 0 ? (
+              <Typography sx={{ py: 1, color: "text.secondary" }}>No category data in this range.</Typography>
+            ) : null}
+            {categoryTotals.map((entry) => {
+              const percent = periodTotal > 0 ? (entry.total / periodTotal) * 100 : 0;
+
+              return (
+                <Stack key={entry.category} direction="row" spacing={1.5} alignItems="center">
+                  <Box sx={{ width: 8, height: 8, borderRadius: "50%", flexShrink: 0, bgcolor: getCategoryColor(entry.category) }} />
+                  <Typography sx={{ width: { xs: 72, sm: 100 }, fontWeight: 600, fontSize: 14, flexShrink: 0 }} noWrap>
+                    {entry.category}
+                  </Typography>
+                  <Box sx={(theme) => ({ flex: 1, height: 8, borderRadius: "4px", bgcolor: alpha(theme.palette.common.white, 0.08), minWidth: 0 })}>
+                    <Box sx={{ width: `${Math.max(percent, 6)}%`, height: "100%", borderRadius: "4px", bgcolor: getCategoryColor(entry.category) }} />
+                  </Box>
+                  <Typography sx={{ minWidth: 72, textAlign: "right", fontWeight: 700, fontSize: 14, flexShrink: 0 }}>{formatCurrency(entry.total)}</Typography>
+                </Stack>
+              );
+            })}
+          </Stack>
+        </Box>
       </Box>
     </Stack>
   );

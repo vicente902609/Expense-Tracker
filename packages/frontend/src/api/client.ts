@@ -3,7 +3,7 @@ import { authStorage } from "../lib/storage.js";
 
 type RequestOptions = {
   body?: unknown;
-  method?: "GET" | "POST" | "PUT" | "DELETE";
+  method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 };
 
 export const apiRequest = async <T>(path: string, options: RequestOptions = {}) => {

@@ -9,9 +9,7 @@ export const upsertUserBudgetPlan = async (userId: string, payload: unknown) => 
   const input = budgetPlanInputSchema.parse(payload);
   const budgetPlan = await upsertBudgetPlan(userId, input);
 
-  await recalculateGoalForecasts(userId, {
-    force: true,
-  });
+  await recalculateGoalForecasts(userId);
 
   return budgetPlan;
 };

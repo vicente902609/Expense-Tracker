@@ -1,9 +1,11 @@
 import { useState } from "react";
-import { Alert, Box, Button, Stack, TextField, Typography } from "@mui/material";
+import { alpha } from "@mui/material/styles";
+import { Alert, Box, Button, Container, Stack, TextField, Typography } from "@mui/material";
 import CurrencyExchangeRoundedIcon from "@mui/icons-material/CurrencyExchangeRounded";
 import { useMutation } from "@tanstack/react-query";
 
 import { login, register } from "../../api/auth.js";
+import { appShellGradient, RADIUS_INNER, RADIUS_SHELL } from "../../theme/ui.js";
 
 type AuthViewProps = {
   onAuthenticated: (token: string, user: { id: string; email: string; name: string; createdAt: string }) => void;
@@ -34,61 +36,81 @@ export const AuthView = ({ onAuthenticated }: AuthViewProps) => {
 
   return (
     <Box
-      sx={{
-        minHeight: "100vh",
-        display: "grid",
-        placeItems: "center",
-        background: "#1a1a18",
-        p: 2,
-      }}
+      sx={(theme) => ({
+        minHeight: "100dvh",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        px: 2,
+        py: { xs: 4, sm: 6 },
+        ...appShellGradient(theme),
+      })}
     >
-      <Box sx={{ width: "100%", maxWidth: 390 }}>
-        <Typography sx={{ mb: 1.25, fontSize: 12, fontWeight: 800, letterSpacing: "0.08em", color: "text.secondary", textTransform: "uppercase" }}>
-          Auth · {mode === "register" ? "Sign Up" : "Sign In"}
+      <Container maxWidth="sm" sx={{ width: "100%" }}>
+        <Typography sx={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", color: "text.secondary", textTransform: "uppercase", mb: 1.5 }}>
+          {mode === "register" ? "Sign up" : "Sign in"}
         </Typography>
 
-        <Box sx={{ borderRadius: 5, bgcolor: "#111110", border: "1px solid rgba(255,255,255,0.08)", p: 3 }}>
+        <Box
+          sx={(theme) => ({
+            borderRadius: RADIUS_SHELL,
+            p: { xs: 2.5, sm: 3.5 },
+            bgcolor: alpha(theme.palette.background.paper, 0.85),
+            backdropFilter: "blur(16px)",
+            border: `1px solid ${alpha(theme.palette.common.white, 0.1)}`,
+            boxShadow: `0 32px 80px ${alpha("#000000", 0.5)}`,
+          })}
+        >
           <Stack spacing={3}>
-            <Box
-              sx={{
-                width: 36,
-                height: 36,
-                display: "grid",
-                placeItems: "center",
-                borderRadius: 2.5,
-                bgcolor: "rgba(79,143,247,0.28)",
-                color: "#8fb9ff",
-              }}
-            >
-              <CurrencyExchangeRoundedIcon fontSize="small" />
-            </Box>
-
-            <Box>
-              <Typography variant="h4">{mode === "register" ? "Create account" : "Welcome back"}</Typography>
-              <Typography color="text.secondary">
-                {mode === "register" ? "Track your spending, hit your goals." : "Sign in to continue tracking your budget."}
-              </Typography>
-            </Box>
+            <Stack direction="row" spacing={1.5} alignItems="center">
+              <Box
+                sx={(theme) => ({
+                  width: 48,
+                  height: 48,
+                  display: "grid",
+                  placeItems: "center",
+                  borderRadius: RADIUS_INNER,
+                  bgcolor: alpha(theme.palette.primary.main, 0.2),
+                  color: "primary.light",
+                  border: `1px solid ${alpha(theme.palette.primary.main, 0.35)}`,
+                })}
+              >
+                <CurrencyExchangeRoundedIcon />
+              </Box>
+              <Box>
+                <Typography variant="h4">{mode === "register" ? "Create account" : "Welcome back"}</Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                  {mode === "register" ? "Track spending and savings in one place." : "Continue where you left off."}
+                </Typography>
+              </Box>
+            </Stack>
 
             {mutation.error ? <Alert severity="error">{mutation.error.message}</Alert> : null}
 
-            {mode === "register" ? <TextField label="Name" value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} required /> : null}
+            {mode === "register" ? (
+              <TextField label="Name" value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} required />
+            ) : null}
             <TextField label="Email" type="email" value={form.email} onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))} required />
             <TextField label="Password" type="password" value={form.password} onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))} required />
 
-            <Button variant="outlined" size="large" onClick={() => mutation.mutate()} disabled={mutation.isPending}>
+            <Button variant="contained" color="primary" size="large" onClick={() => mutation.mutate()} disabled={mutation.isPending}>
               {mutation.isPending ? "Working..." : mode === "register" ? "Create account" : "Sign in"}
             </Button>
 
-            <Typography sx={{ textAlign: "center", color: "text.secondary" }}>
+            <Typography variant="body2" sx={{ textAlign: "center", color: "text.secondary" }}>
               {mode === "register" ? "Already have an account?" : "Need an account?"}{" "}
-              <Button color="inherit" onClick={() => setMode(mode === "register" ? "login" : "register")} sx={{ minWidth: 0, p: 0, color: "#8fb9ff" }}>
+              <Button
+                color="primary"
+                onClick={() => setMode(mode === "register" ? "login" : "register")}
+                sx={{ minWidth: 0, p: 0, verticalAlign: "baseline", fontWeight: 600 }}
+              >
                 {mode === "register" ? "Sign in" : "Sign up"}
               </Button>
             </Typography>
           </Stack>
         </Box>
-      </Box>
+      </Container>
     </Box>
   );
 };

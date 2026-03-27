@@ -1,13 +1,19 @@
-import type { BudgetPlan, Expense, Goal } from "@expense-tracker/shared";
+import { expenseCategoryValues, type BudgetPlan, type Expense, type Goal } from "@expense-tracker/shared";
 
-export const predefinedCategories = ["Food", "Transport", "Entertainment", "Utilities"] as const;
+export const predefinedCategories = expenseCategoryValues;
 
+/** Distinct hues for charts / dots on dark UI (predefined categories from shared package). */
 const categoryColors: Record<string, string> = {
   Food: "#2fb58d",
   Transport: "#4f8ff7",
-  Entertainment: "#ef5a94",
+  Housing: "#f0a060",
   Utilities: "#f4b03e",
-  Gym: "#8c7af7",
+  Entertainment: "#ef5a94",
+  Health: "#4ade80",
+  Shopping: "#e879f9",
+  Travel: "#38bdf8",
+  Education: "#818cf8",
+  Subscriptions: "#c084fc",
   Other: "#8e8e87",
 };
 
@@ -68,6 +74,28 @@ export const getCurrentMonthExpenses = (expenses: Expense[]) => {
   return expenses.filter((expense) => expense.date.startsWith(currentMonth));
 };
 
+export const getSpendInCalendarMonth = (expenses: Expense[], monthOffset: number) => {
+  const reference = new Date();
+  const target = new Date(Date.UTC(reference.getUTCFullYear(), reference.getUTCMonth() + monthOffset, 1));
+  const monthKey = target.toISOString().slice(0, 7);
+  return expenses.filter((expense) => expense.date.startsWith(monthKey)).reduce((sum, expense) => sum + expense.amount, 0);
+};
+
+export const formatSpendVsPriorMonth = (currentMonthSpend: number, priorMonthSpend: number): string => {
+  if (currentMonthSpend <= 0 && priorMonthSpend <= 0) {
+    return "no spending yet this month";
+  }
+
+  if (priorMonthSpend <= 0) {
+    return "first month with spending";
+  }
+
+  const ratio = (currentMonthSpend - priorMonthSpend) / priorMonthSpend;
+  const pct = Math.round(ratio * 100);
+  const direction = pct > 0 ? "↑" : pct < 0 ? "↓" : "→";
+  return `${direction} ${Math.abs(pct)}% vs prior month`;
+};
+
 export const getGoalProgress = (goal: Goal) => {
   if (goal.targetAmount <= 0) {
     return 0;
@@ -92,6 +120,8 @@ export const getMonthlySeries = (expenses: Expense[]) => {
   });
 };
 
+export type ChartSeriesPoint = { key: string; label: string; total: number };
+
 export const getDailySeries = (expenses: Expense[]) =>
   Object.entries(
     expenses.reduce<Record<string, number>>((totals, expense) => {
@@ -105,6 +135,44 @@ export const getDailySeries = (expenses: Expense[]) =>
       label: formatShortDate(key),
       total,
     }));
+
+const pad2 = (n: number) => String(n).padStart(2, "0");
+const toLocalIso = (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+const parseLocalIsoDate = (iso: string) => {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(y, m - 1, d);
+};
+
+/** Monday 00:00 local for the week containing `d`. */
+const mondayOfLocalWeek = (d: Date) => {
+  const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const day = x.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  x.setDate(x.getDate() + diff);
+  return x;
+};
+
+/**
+ * Every calendar day in [fromIso, toIso] with spend, including zero when no expense that day.
+ */
+export const getDailySeriesForRange = (expenses: Expense[], fromIso: string, toIso: string): ChartSeriesPoint[] => {
+  const totals = expenses.reduce<Record<string, number>>((acc, expense) => {
+    if (expense.date >= fromIso && expense.date <= toIso) {
+      acc[expense.date] = (acc[expense.date] ?? 0) + expense.amount;
+    }
+    return acc;
+  }, {});
+
+  const out: ChartSeriesPoint[] = [];
+  const cursor = parseLocalIsoDate(fromIso);
+  const end = parseLocalIsoDate(toIso);
+  while (cursor <= end) {
+    const key = toLocalIso(cursor);
+    out.push({ key, label: formatShortDate(key), total: totals[key] ?? 0 });
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return out;
+};
 
 export const getWeeklySeries = (expenses: Expense[]) => {
   const totals = expenses.reduce<Record<string, number>>((result, expense) => {
@@ -124,6 +192,32 @@ export const getWeeklySeries = (expenses: Expense[]) => {
       label: `Week of ${formatShortDate(key)}`,
       total,
     }));
+};
+
+/**
+ * Every Monday-start week that intersects [fromIso, toIso], with spend (including zero weeks).
+ * Week keys use local Monday YYYY-MM-DD (aligned with report date filters).
+ */
+export const getWeeklySeriesForRange = (expenses: Expense[], fromIso: string, toIso: string): ChartSeriesPoint[] => {
+  const totals = expenses.reduce<Record<string, number>>((result, expense) => {
+    const mon = mondayOfLocalWeek(parseLocalIsoDate(expense.date));
+    const weekKey = toLocalIso(mon);
+    if (expense.date >= fromIso && expense.date <= toIso) {
+      result[weekKey] = (result[weekKey] ?? 0) + expense.amount;
+    }
+    return result;
+  }, {});
+
+  const firstMon = mondayOfLocalWeek(parseLocalIsoDate(fromIso));
+  const lastMon = mondayOfLocalWeek(parseLocalIsoDate(toIso));
+  const out: ChartSeriesPoint[] = [];
+  const cursor = new Date(firstMon);
+  while (cursor <= lastMon) {
+    const key = toLocalIso(cursor);
+    out.push({ key, label: `Week of ${formatShortDate(key)}`, total: totals[key] ?? 0 });
+    cursor.setDate(cursor.getDate() + 7);
+  }
+  return out;
 };
 
 export const getCategoryTotals = (expenses: Expense[]) => {

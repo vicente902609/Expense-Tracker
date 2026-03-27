@@ -1,57 +1,65 @@
-import { useEffect, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-const storageKey = "expense-tracker-custom-categories";
-
-const readCategories = () => {
-  const raw = window.localStorage.getItem(storageKey);
-
-  if (!raw) {
-    return [];
-  }
-
-  try {
-    const parsed = JSON.parse(raw) as string[];
-    return parsed.filter(Boolean);
-  } catch {
-    return [];
-  }
-};
+import { addCustomCategory, deleteCustomCategory, listCustomCategories, renameCustomCategory } from "../api/categories.js";
 
 export const useCustomCategories = () => {
-  const [categories, setCategories] = useState<string[]>(() => readCategories());
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    window.localStorage.setItem(storageKey, JSON.stringify(categories));
-  }, [categories]);
+  const query = useQuery({
+    queryKey: ["categories"],
+    queryFn: async () => {
+      const response = await listCustomCategories();
+      return response.custom;
+    },
+  });
 
-  const addCategory = (category: string) => {
-    const nextCategory = category.trim();
+  const addMutation = useMutation({
+    mutationFn: (name: string) => addCustomCategory(name),
+    onSuccess: (response) => {
+      queryClient.setQueryData(["categories"], response.custom);
+    },
+  });
 
-    if (!nextCategory) {
-      return;
-    }
+  const renameMutation = useMutation({
+    mutationFn: ({ from, to }: { from: string; to: string }) => renameCustomCategory(from, to),
+    onSuccess: async (response) => {
+      await queryClient.setQueryData(["categories"], response.custom);
+      await queryClient.invalidateQueries({ queryKey: ["expenses"] });
+      await queryClient.invalidateQueries({ queryKey: ["goals"] });
+    },
+  });
 
-    setCategories((current) => (current.includes(nextCategory) ? current : [...current, nextCategory]));
-  };
-
-  const renameCategory = (currentName: string, nextName: string) => {
-    const trimmedNextName = nextName.trim();
-
-    if (!trimmedNextName || currentName === trimmedNextName) {
-      return;
-    }
-
-    setCategories((current) => current.map((category) => (category === currentName ? trimmedNextName : category)));
-  };
-
-  const deleteCategory = (categoryToDelete: string) => {
-    setCategories((current) => current.filter((category) => category !== categoryToDelete));
-  };
+  const deleteMutation = useMutation({
+    mutationFn: (name: string) => deleteCustomCategory(name),
+    onSuccess: async (response) => {
+      await queryClient.setQueryData(["categories"], response.custom);
+      await queryClient.invalidateQueries({ queryKey: ["expenses"] });
+      await queryClient.invalidateQueries({ queryKey: ["goals"] });
+    },
+  });
 
   return {
-    categories,
-    addCategory,
-    renameCategory,
-    deleteCategory,
+    categories: query.data ?? [],
+    isLoading: query.isLoading,
+    error: query.error,
+    addCategory: async (name: string) => {
+      const trimmed = name.trim();
+
+      if (!trimmed) {
+        return;
+      }
+
+      await addMutation.mutateAsync(trimmed);
+    },
+    renameCategory: async (currentName: string, nextName: string) => {
+      await renameMutation.mutateAsync({ from: currentName, to: nextName.trim() });
+    },
+    deleteCategory: async (name: string) => {
+      await deleteMutation.mutateAsync(name);
+    },
+    addPending: addMutation.isPending,
+    renamePending: renameMutation.isPending,
+    deletePending: deleteMutation.isPending,
+    addError: addMutation.error,
   };
 };

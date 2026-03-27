@@ -10,6 +10,7 @@ type UserDocument = {
   passwordHash: string;
   name: string;
   createdAt: string;
+  customCategories?: string[];
 };
 
 type NewUserDocument = Omit<UserDocument, "_id">;
@@ -45,6 +46,7 @@ export const createUser = async (input: { email: string; passwordHash: string; n
     passwordHash: input.passwordHash,
     name: input.name,
     createdAt: now,
+    customCategories: [],
   };
 
   const result = await collection.insertOne(document);
@@ -53,4 +55,15 @@ export const createUser = async (input: { email: string; passwordHash: string; n
     _id: result.insertedId,
     ...document,
   });
+};
+
+export const getUserCustomCategories = async (userId: string) => {
+  const collection = await getUsersCollection();
+  const document = await collection.findOne({ _id: toObjectId(userId) }, { projection: { customCategories: 1 } });
+  return document?.customCategories ?? [];
+};
+
+export const setUserCustomCategories = async (userId: string, categories: string[]) => {
+  const collection = await getUsersCollection();
+  await collection.updateOne({ _id: toObjectId(userId) }, { $set: { customCategories: categories } });
 };

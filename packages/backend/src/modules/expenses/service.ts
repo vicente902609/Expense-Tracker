@@ -12,9 +12,7 @@ export const listUserExpenses = async (userId: string, filters: unknown) => {
 export const createUserExpense = async (userId: string, payload: unknown) => {
   const input = expenseInputSchema.parse(payload);
   const expense = await createExpense(userId, input);
-  await recalculateGoalForecasts(userId, {
-    force: true,
-  });
+  await recalculateGoalForecasts(userId);
   return expense;
 };
 
@@ -26,9 +24,7 @@ export const updateUserExpense = async (userId: string, expenseId: string, paylo
     throw new AppError("Expense not found", 404);
   }
 
-  await recalculateGoalForecasts(userId, {
-    force: true,
-  });
+  await recalculateGoalForecasts(userId);
 
   return expense;
 };
@@ -40,7 +36,5 @@ export const deleteUserExpense = async (userId: string, expenseId: string) => {
     throw new AppError("Expense not found", 404);
   }
 
-  await recalculateGoalForecasts(userId, {
-    force: true,
-  });
+  await recalculateGoalForecasts(userId);
 };

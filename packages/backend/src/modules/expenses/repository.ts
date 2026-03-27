@@ -113,3 +113,22 @@ export const deleteExpense = async (userId: string, expenseId: string) => {
 
   return result.deletedCount > 0;
 };
+
+export const recategorizeExpenses = async (userId: string, fromCategory: string, toCategory: string) => {
+  const collection = await getExpensesCollection();
+  const updatedAt = new Date().toISOString();
+  const result = await collection.updateMany(
+    {
+      userId: toObjectId(userId),
+      category: fromCategory,
+    },
+    {
+      $set: {
+        category: toCategory,
+        updatedAt,
+      },
+    },
+  );
+
+  return result.modifiedCount;
+};

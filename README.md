@@ -58,9 +58,18 @@ This keeps responsibilities narrow and makes a future Lambda migration straightf
 
 - goals are always visible on the dashboard
 - forecast data travels with the goal payload
-- forecast recalculation is triggered on goal reads and forced after expense/budget changes
-- the generated insight string is cached on the goal document with a TTL to avoid unnecessary repeated AI work
+- forecast recalculation runs whenever goals are listed and after expense, budget, or category bulk-updates
+- the generated insight string is stored on the goal document (updated each recalculation)
 - if there is not enough history, the API returns an explicit insufficient-data message instead of a misleading prediction
+
+### Categories
+
+Custom categories are stored on the user document in MongoDB (not browser storage). Renaming or deleting a custom category updates all matching expenses in one bulk operation and refreshes goal forecasts.
+
+- `GET /api/v1/categories` — `{ custom: string[] }`
+- `POST /api/v1/categories` — `{ name }`
+- `PATCH /api/v1/categories` — `{ from, to }` (rename; you may target a built-in name to merge into it)
+- `DELETE /api/v1/categories/:name` — reassigns expenses to **Other** and removes the custom label
 
 ## Environment Files
 
@@ -85,7 +94,6 @@ JWT_SECRET=replace-with-a-long-secret
 CLIENT_ORIGIN=http://localhost:3000
 OPENAI_API_KEY=
 OPENAI_MODEL=gpt-4.1-mini
-FORECAST_CACHE_TTL_MINUTES=30
 ```
 
 Variable notes:
@@ -97,7 +105,6 @@ Variable notes:
 - `CLIENT_ORIGIN`: allowed frontend origin for CORS
 - `OPENAI_API_KEY`: optional, enables live AI calls
 - `OPENAI_MODEL`: optional model override
-- `FORECAST_CACHE_TTL_MINUTES`: freshness window for cached goal insights
 
 ### Frontend
 

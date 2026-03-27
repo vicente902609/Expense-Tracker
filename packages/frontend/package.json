@@ -6,7 +6,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json --noEmit && vite build",
     "dev": "vite",
-    "lint": "echo 'frontend lint placeholder'",
+    "lint": "eslint src --ext .ts,.tsx --max-warnings=0",
     "test": "echo 'frontend tests placeholder'",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },

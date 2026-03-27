@@ -7,6 +7,7 @@ import { errorHandler } from "./middleware/error-handler.js";
 import { aiRouter } from "./modules/ai/routes.js";
 import { authRouter } from "./modules/auth/routes.js";
 import { budgetRouter } from "./modules/budget/routes.js";
+import { categoriesRouter } from "./modules/categories/routes.js";
 import { expensesRouter } from "./modules/expenses/routes.js";
 import { goalsRouter } from "./modules/goals/routes.js";
 
@@ -31,6 +32,7 @@ export const createApp = () => {
   app.use("/api/v1/expenses", authenticate, expensesRouter);
   app.use("/api/v1/goals", authenticate, goalsRouter);
   app.use("/api/v1/budget-plan", authenticate, budgetRouter);
+  app.use("/api/v1/categories", authenticate, categoriesRouter);
   app.use("/api/v1/ai", authenticate, aiRouter);
 
   app.use(errorHandler);
