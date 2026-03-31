@@ -1,3 +1,4 @@
+import type { Goal } from "@expense-tracker/shared";
 import { alpha } from "@mui/material/styles";
 import { Box, Typography } from "@mui/material";
 
@@ -8,17 +9,15 @@ type MonthStatCardsProps = {
   spent: number;
   spendVsPriorMonthNote: string;
   expensesCount: number;
-  remainingBudget: number;
-  daysLeftInMonth: number;
-  hasBudgetPlan: boolean;
+  goal?: Goal;
 };
 
-export const MonthStatCards = ({ spent, spendVsPriorMonthNote, expensesCount, remainingBudget, daysLeftInMonth, hasBudgetPlan }: MonthStatCardsProps) => (
+export const MonthStatCards = ({ spent, spendVsPriorMonthNote, expensesCount, goal }: MonthStatCardsProps) => (
   <Box
     sx={{
       display: "grid",
       gap: { xs: 1.25, sm: 1.5 },
-      gridTemplateColumns: { xs: "1fr", sm: "repeat(3, minmax(0, 1fr))" },
+      gridTemplateColumns: { xs: "1fr", sm: "repeat(4, minmax(0, 1fr))" },
     }}
   >
     {[
@@ -29,15 +28,21 @@ export const MonthStatCards = ({ spent, spendVsPriorMonthNote, expensesCount, re
         accent: "error" as const,
       },
       {
-        label: "Budget left",
-        value: formatCurrency(remainingBudget),
-        note: hasBudgetPlan ? `${daysLeftInMonth} days left in month` : "Add income to compare",
-        accent: "success" as const,
+        label: "Target",
+        value: goal ? formatCurrency(goal.targetExpense) : "Set goal",
+        note: goal ? "monthly spending target" : "create goal to track pace",
+        accent: "neutral" as const,
+      },
+      {
+        label: "Pace",
+        value: goal ? `${goal.targetExpense - spent >= 0 ? "+" : "-"}${formatCurrency(Math.abs(goal.targetExpense - spent))}` : "—",
+        note: goal ? (goal.targetExpense - spent >= 0 ? "under target this month" : "over target this month") : "needs target expense",
+        accent: goal ? (goal.targetExpense - spent >= 0 ? "success" as const : "error" as const) : "neutral" as const,
       },
       {
         label: "Transactions",
         value: expensesCount.toString(),
-        note: "this month",
+        note: expensesCount > 0 ? `${formatCurrency(spent / expensesCount, true)} avg / txn` : "no transactions yet",
         accent: "neutral" as const,
       },
     ].map((item) => (
@@ -67,7 +72,7 @@ export const MonthStatCards = ({ spent, spendVsPriorMonthNote, expensesCount, re
                 ? "error.light"
                 : item.accent === "success"
                   ? "success.light"
-                  : "text.secondary",
+                : "text.secondary",
           }}
         >
           {item.note}

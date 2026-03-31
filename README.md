@@ -145,8 +145,6 @@ Expected local URLs:
 - `DELETE /api/v1/expenses/:expenseId`
 - `GET /api/v1/goals`
 - `POST /api/v1/goals`
-- `GET /api/v1/budget-plan`
-- `PUT /api/v1/budget-plan`
 - `POST /api/v1/ai/parse-expense`
 
 All `/api/v1/*` routes except `/auth/*` require a JWT bearer token.

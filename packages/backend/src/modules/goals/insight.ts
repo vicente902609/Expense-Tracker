@@ -1,7 +1,7 @@
 type InsightSeed = {
   monthlySavingsRate: number;
   projectedEta: string | null;
-  targetDate: string;
+  targetDate: string | null;
   suggestedCategoryCut: string | null;
   suggestedCutAmount: number;
   status: "on_track" | "at_risk" | "achieved" | "insufficient_data";
@@ -9,7 +9,7 @@ type InsightSeed = {
 
 export const buildGoalEtaInsight = (seed: InsightSeed): string => {
   if (seed.status === "insufficient_data") {
-    return "Add a budget plan and at least a few expenses before we estimate your goal with confidence.";
+    return "Set your monthly target expense to unlock a trustworthy goal forecast.";
   }
 
   if (seed.status === "achieved") {
@@ -17,7 +17,12 @@ export const buildGoalEtaInsight = (seed: InsightSeed): string => {
   }
 
   if (seed.status === "on_track") {
-    return `You're saving about $${seed.monthlySavingsRate.toFixed(0)}/month. At this pace you'll hit your goal by ${seed.projectedEta}, on or before your target date.`;
+    const monthlyText =
+      seed.monthlySavingsRate >= 0 ? `saving about $${seed.monthlySavingsRate.toFixed(0)}/month` : `overspending by about $${Math.abs(seed.monthlySavingsRate).toFixed(0)}/month`;
+    if (!seed.targetDate) {
+      return `You're ${monthlyText}. At this pace you'll hit your goal by ${seed.projectedEta}.`;
+    }
+    return `You're ${monthlyText}. At this pace you'll hit your goal by ${seed.projectedEta}, on or before your target date.`;
   }
 
   const categoryPart =
@@ -25,5 +30,11 @@ export const buildGoalEtaInsight = (seed: InsightSeed): string => {
       ? ` Cut ${seed.suggestedCategoryCut} by about $${seed.suggestedCutAmount}/month to recover pace.`
       : "";
 
-  return `You're saving about $${seed.monthlySavingsRate.toFixed(0)}/month. At this pace you'll hit your goal by ${seed.projectedEta ?? "a later date than planned"}, behind your ${seed.targetDate} target.${categoryPart}`;
+  const monthlyText =
+    seed.monthlySavingsRate >= 0 ? `saving about $${seed.monthlySavingsRate.toFixed(0)}/month` : `overspending by about $${Math.abs(seed.monthlySavingsRate).toFixed(0)}/month`;
+
+  if (!seed.targetDate) {
+    return `You're ${monthlyText}. At this pace you'll hit your goal by ${seed.projectedEta ?? "a later date than planned"}.${categoryPart}`;
+  }
+  return `You're ${monthlyText}. At this pace you'll hit your goal by ${seed.projectedEta ?? "a later date than planned"}, behind your ${seed.targetDate} target.${categoryPart}`;
 };

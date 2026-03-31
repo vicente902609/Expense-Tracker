@@ -9,7 +9,9 @@ type GoalDocument = {
   userId: ObjectId;
   name: string;
   targetAmount: number;
-  targetDate: string;
+  targetDate?: string;
+  savedAmount?: number;
+  targetExpense: number;
   currentAmount: number;
   status: Goal["status"];
   aiEtaInsight: string;
@@ -27,6 +29,8 @@ const mapGoal = (document: GoalDocument): Goal => ({
   name: document.name,
   targetAmount: document.targetAmount,
   targetDate: document.targetDate,
+  savedAmount: document.savedAmount ?? 0,
+  targetExpense: document.targetExpense ?? 0,
   currentAmount: document.currentAmount,
   status: document.status,
   aiEtaInsight: document.aiEtaInsight,
@@ -59,9 +63,11 @@ export const createGoal = async (userId: string, input: GoalInput) => {
     name: input.name,
     targetAmount: input.targetAmount,
     targetDate: input.targetDate,
+    savedAmount: input.savedAmount ?? 0,
+    targetExpense: input.targetExpense,
     currentAmount: 0,
     status: "insufficient_data",
-    aiEtaInsight: "Add a budget plan and a few expenses to unlock a trustworthy goal forecast.",
+    aiEtaInsight: "Set your monthly target expense to unlock a trustworthy goal forecast.",
     forecast: {
       monthlySavingsRate: 0,
       projectedEta: null,
@@ -95,6 +101,8 @@ export const updateGoalDetails = async (goalId: string, userId: string, input: G
         name: input.name,
         targetAmount: input.targetAmount,
         targetDate: input.targetDate,
+        savedAmount: input.savedAmount ?? 0,
+        targetExpense: input.targetExpense,
         updatedAt,
       },
     },

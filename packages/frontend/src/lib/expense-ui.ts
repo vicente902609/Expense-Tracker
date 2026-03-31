@@ -1,4 +1,4 @@
-import { expenseCategoryValues, type BudgetPlan, type Expense, type Goal } from "@expense-tracker/shared";
+import { expenseCategoryValues, type Expense, type Goal } from "@expense-tracker/shared";
 
 export const predefinedCategories = expenseCategoryValues;
 
@@ -33,51 +33,45 @@ const currencyPreciseFormatter = new Intl.NumberFormat("en-US", {
 export const formatCurrency = (value: number, precise = false) =>
   (precise ? currencyPreciseFormatter : currencyFormatter).format(value);
 
+/** Local calendar YYYY-MM-DD (avoid UTC drift from toISOString). */
+export const formatLocalIsoDate = (d: Date) => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+};
+
+/** YYYY-MM-DD strings are stored as calendar days; format using local date parts (no UTC midnight shift). */
+const localDateFromIso = (isoDate: string) => {
+  const [y, m, d] = isoDate.split("-").map(Number);
+  if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) {
+    return new Date(NaN);
+  }
+  return new Date(y, m - 1, d);
+};
+
 export const formatMonthLabel = (isoDate: string) =>
   new Intl.DateTimeFormat("en-US", {
     month: "long",
     year: "numeric",
-    timeZone: "UTC",
-  }).format(new Date(`${isoDate}T00:00:00.000Z`));
+  }).format(localDateFromIso(isoDate));
 
 export const formatShortDate = (isoDate: string) =>
   new Intl.DateTimeFormat("en-US", {
     month: "short",
     day: "numeric",
-    timeZone: "UTC",
-  }).format(new Date(`${isoDate}T00:00:00.000Z`));
-
-export const getGreeting = () => {
-  const hour = new Date().getHours();
-
-  if (hour < 12) {
-    return "Good morning";
-  }
-
-  if (hour < 18) {
-    return "Good afternoon";
-  }
-
-  return "Good evening";
-};
-
-export const getInitials = (name: string) =>
-  name
-    .split(/\s+/u)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part.charAt(0).toUpperCase())
-    .join("");
+  }).format(localDateFromIso(isoDate));
 
 export const getCurrentMonthExpenses = (expenses: Expense[]) => {
-  const currentMonth = new Date().toISOString().slice(0, 7);
+  const now = new Date();
+  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   return expenses.filter((expense) => expense.date.startsWith(currentMonth));
 };
 
 export const getSpendInCalendarMonth = (expenses: Expense[], monthOffset: number) => {
   const reference = new Date();
-  const target = new Date(Date.UTC(reference.getUTCFullYear(), reference.getUTCMonth() + monthOffset, 1));
-  const monthKey = target.toISOString().slice(0, 7);
+  const target = new Date(reference.getFullYear(), reference.getMonth() + monthOffset, 1);
+  const monthKey = `${target.getFullYear()}-${String(target.getMonth() + 1).padStart(2, "0")}`;
   return expenses.filter((expense) => expense.date.startsWith(monthKey)).reduce((sum, expense) => sum + expense.amount, 0);
 };
 
@@ -120,6 +114,42 @@ export const getMonthlySeries = (expenses: Expense[]) => {
   });
 };
 
+/**
+ * Every calendar month that intersects [fromIso, toIso], including zero-month buckets.
+ */
+export const getMonthlySeriesForRange = (expenses: Expense[], fromIso: string, toIso: string): ChartSeriesPoint[] => {
+  const totals = expenses.reduce<Record<string, number>>((acc, expense) => {
+    if (expense.date >= fromIso && expense.date <= toIso) {
+      const monthKey = expense.date.slice(0, 7);
+      acc[monthKey] = (acc[monthKey] ?? 0) + expense.amount;
+    }
+    return acc;
+  }, {});
+
+  const [fromY, fromM] = fromIso.split("-").map(Number);
+  const [toY, toM] = toIso.split("-").map(Number);
+
+  const cursor = new Date(fromY, fromM - 1, 1);
+  const end = new Date(toY, toM - 1, 1);
+  const out: ChartSeriesPoint[] = [];
+
+  while (cursor <= end) {
+    const year = cursor.getFullYear();
+    const month = cursor.getMonth() + 1;
+    const monthKey = `${year}-${pad2(month)}`;
+    out.push({
+      key: monthKey,
+      label: new Intl.DateTimeFormat("en-US", { month: "short", timeZone: "UTC" }).format(
+        new Date(Date.UTC(year, month - 1, 1)),
+      ),
+      total: totals[monthKey] ?? 0,
+    });
+    cursor.setMonth(cursor.getMonth() + 1);
+  }
+
+  return out;
+};
+
 export type ChartSeriesPoint = { key: string; label: string; total: number };
 
 export const getDailySeries = (expenses: Expense[]) =>
@@ -141,6 +171,51 @@ const toLocalIso = (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${
 const parseLocalIsoDate = (iso: string) => {
   const [y, m, d] = iso.split("-").map(Number);
   return new Date(y, m - 1, d);
+};
+
+const addDaysLocal = (d: Date, days: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + days);
+
+const dominantMonthOfWeek = (weekStart: Date) => {
+  const monthCounts = new Map<number, number>();
+  for (let i = 0; i < 7; i += 1) {
+    const day = addDaysLocal(weekStart, i);
+    const month = day.getMonth();
+    monthCounts.set(month, (monthCounts.get(month) ?? 0) + 1);
+  }
+
+  let dominantMonth = weekStart.getMonth();
+  let maxCount = 0;
+  for (const [month, count] of monthCounts.entries()) {
+    if (count > maxCount) {
+      dominantMonth = month;
+      maxCount = count;
+    }
+  }
+  return dominantMonth;
+};
+
+const weekIndexInDominantMonth = (weekStart: Date, dominantMonth: number) => {
+  const cursor = mondayOfLocalWeek(new Date(weekStart.getFullYear(), dominantMonth, 1));
+  let index = 0;
+
+  while (cursor <= weekStart) {
+    if (dominantMonthOfWeek(cursor) === dominantMonth) {
+      index += 1;
+    }
+    cursor.setDate(cursor.getDate() + 7);
+  }
+
+  return Math.max(index, 1);
+};
+
+const formatMonthWeekLabel = (weekStartIso: string) => {
+  const weekStart = parseLocalIsoDate(weekStartIso);
+  const dominantMonth = dominantMonthOfWeek(weekStart);
+  const monthLabel = new Intl.DateTimeFormat("en-US", { month: "short", timeZone: "UTC" }).format(
+    new Date(Date.UTC(weekStart.getFullYear(), dominantMonth, 1)),
+  );
+  const weekIndex = weekIndexInDominantMonth(weekStart, dominantMonth);
+  return `${monthLabel} W${weekIndex}`;
 };
 
 /** Monday 00:00 local for the week containing `d`. */
@@ -214,7 +289,7 @@ export const getWeeklySeriesForRange = (expenses: Expense[], fromIso: string, to
   const cursor = new Date(firstMon);
   while (cursor <= lastMon) {
     const key = toLocalIso(cursor);
-    out.push({ key, label: `Week of ${formatShortDate(key)}`, total: totals[key] ?? 0 });
+    out.push({ key, label: formatMonthWeekLabel(key), total: totals[key] ?? 0 });
     cursor.setDate(cursor.getDate() + 7);
   }
   return out;
@@ -231,25 +306,3 @@ export const getCategoryTotals = (expenses: Expense[]) => {
     .sort((left, right) => right.total - left.total);
 };
 
-const sum = (values: number[]) => values.reduce((total, value) => total + value, 0);
-
-export const getBudgetSummary = (budgetPlan: BudgetPlan | null | undefined, monthExpenses: Expense[]) => {
-  const incomeTotal = budgetPlan?.monthlyIncome ?? 0;
-  const actualSpent = sum(monthExpenses.map((expense) => expense.amount));
-  const monthlyBalance = incomeTotal - actualSpent;
-  const remainingBudget = Math.max(monthlyBalance, 0);
-  const now = new Date();
-  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-  const daysLeft = Math.max(daysInMonth - now.getDate(), 1);
-  const dailyBudget = remainingBudget / daysLeft;
-
-  return {
-    incomeTotal,
-    actualSpent,
-    monthlyBalance,
-    remainingBudget,
-    dailyBudget,
-    daysLeft,
-    currentBalance: budgetPlan?.savingsTarget ?? 0,
-  };
-};

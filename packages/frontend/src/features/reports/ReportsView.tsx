@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import type { Expense } from "@expense-tracker/shared";
 import { alpha } from "@mui/material/styles";
-import { Box, Stack, Typography } from "@mui/material";
+import { Box, Stack, Tooltip, Typography } from "@mui/material";
 
 import { DateFilter } from "../../components/DateFilter.js";
 import { useDateFilter } from "../../hooks/use-date-filter.js";
@@ -13,6 +13,7 @@ import {
   getCategoryTotals,
   getDailySeriesForRange,
   getMonthlySeries,
+  getMonthlySeriesForRange,
   getWeeklySeriesForRange,
 } from "../../lib/expense-ui.js";
 import { RADIUS_DENSE, sectionLabelSx, surfaceCard } from "../../theme/ui.js";
@@ -51,13 +52,18 @@ const buildReportSeries = (kind: DateFilterKind, filtered: Expense[], fromIso: s
   }
 
   const days = daysInclusiveInRange(fromIso, toIso);
-  if (days <= 42) {
+  const from = new Date(`${fromIso}T12:00:00`);
+  const to = new Date(`${toIso}T12:00:00`);
+  const twoMonthsAfterFrom = new Date(from.getFullYear(), from.getMonth() + 2, from.getDate(), 12, 0, 0);
+  const isAboveTwoMonths = to > twoMonthsAfterFrom;
+
+  if (days < 14) {
     return { series: getDailySeriesForRange(filtered, fromIso, toIso), bucketLabel: "day" };
   }
-  if (days <= 200) {
+  if (!isAboveTwoMonths) {
     return { series: getWeeklySeriesForRange(filtered, fromIso, toIso), bucketLabel: "week" };
   }
-  return { series: getMonthlySeries(filtered), bucketLabel: "month" };
+  return { series: getMonthlySeriesForRange(filtered, fromIso, toIso), bucketLabel: "month" };
 };
 
 export const ReportsView = ({ expenses }: ReportsViewProps) => {
@@ -126,25 +132,35 @@ export const ReportsView = ({ expenses }: ReportsViewProps) => {
               <Typography sx={{ py: 2, color: "text.secondary" }}>No expenses in this date range.</Typography>
             ) : (
               <Box sx={{ height: { xs: 120, sm: 140 }, display: "flex", alignItems: "flex-end", gap: { xs: 0.75, sm: 1.2 } }}>
-                {series.map((entry, index) => (
-                  <Stack key={entry.key} sx={{ flex: 1, minWidth: 0, alignItems: "center" }} spacing={1}>
-                    <Box
-                      sx={(theme) => ({
-                        width: "100%",
-                        maxWidth: 48,
-                        height: `${Math.max((entry.total / maxValue) * 100, 12)}px`,
-                        borderTopLeftRadius: RADIUS_DENSE,
-                        borderTopRightRadius: RADIUS_DENSE,
-                        borderBottomLeftRadius: "3px",
-                        borderBottomRightRadius: "3px",
-                        bgcolor: index === series.length - 1 ? theme.palette.primary.main : alpha(theme.palette.primary.main, 0.35),
-                      })}
-                    />
-                    <Typography variant="caption" color="text.secondary" sx={{ textAlign: "center", lineHeight: 1.2 }}>
-                      {entry.label}
-                    </Typography>
-                  </Stack>
-                ))}
+                {series.map((entry, index) => {
+                  const isZero = entry.total <= 0;
+                  const barHeight = isZero ? 3 : Math.max((entry.total / maxValue) * 100, 8);
+                  return (
+                    <Stack key={entry.key} sx={{ flex: 1, minWidth: 0, alignItems: "center" }} spacing={1}>
+                      <Tooltip title={`${entry.label}: ${formatCurrency(entry.total)}`} arrow>
+                        <Box
+                          sx={(theme) => ({
+                            width: "100%",
+                            maxWidth: 48,
+                            height: `${barHeight}px`,
+                            borderTopLeftRadius: RADIUS_DENSE,
+                            borderTopRightRadius: RADIUS_DENSE,
+                            borderBottomLeftRadius: "3px",
+                            borderBottomRightRadius: "3px",
+                            bgcolor: isZero
+                              ? alpha(theme.palette.primary.main, 0.22)
+                              : index === series.length - 1
+                                ? theme.palette.primary.main
+                                : alpha(theme.palette.primary.main, 0.4),
+                          })}
+                        />
+                      </Tooltip>
+                      <Typography variant="caption" color="text.secondary" sx={{ textAlign: "center", lineHeight: 1.2 }}>
+                        {entry.label}
+                      </Typography>
+                    </Stack>
+                  );
+                })}
               </Box>
             )}
             <Typography variant="body2" sx={{ mt: 1.5, textAlign: "right", color: "text.secondary" }}>
@@ -172,8 +188,8 @@ export const ReportsView = ({ expenses }: ReportsViewProps) => {
                   <Typography sx={{ width: { xs: 72, sm: 100 }, fontWeight: 600, fontSize: 14, flexShrink: 0 }} noWrap>
                     {entry.category}
                   </Typography>
-                  <Box sx={(theme) => ({ flex: 1, height: 8, borderRadius: "4px", bgcolor: alpha(theme.palette.common.white, 0.08), minWidth: 0 })}>
-                    <Box sx={{ width: `${Math.max(percent, 6)}%`, height: "100%", borderRadius: "4px", bgcolor: getCategoryColor(entry.category) }} />
+                  <Box sx={(theme) => ({ flex: 1, height: 6, borderRadius: "4px", bgcolor: alpha(theme.palette.common.white, 0.08), minWidth: 0 })}>
+                    <Box sx={{ width: `${Math.max(percent, 2)}%`, height: "100%", borderRadius: "4px", bgcolor: getCategoryColor(entry.category) }} />
                   </Box>
                   <Typography sx={{ minWidth: 72, textAlign: "right", fontWeight: 700, fontSize: 14, flexShrink: 0 }}>{formatCurrency(entry.total)}</Typography>
                 </Stack>

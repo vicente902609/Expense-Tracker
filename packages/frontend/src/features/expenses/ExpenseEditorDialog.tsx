@@ -37,7 +37,7 @@ export const ExpenseEditorDialog = ({ availableCategories, expense, open, onClos
       <DialogContent sx={{ px: 0, py: 0, pt: fullScreen ? 2 : 0 }}>
         <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ px: { xs: 2, sm: 3 }, py: { xs: 2, sm: 2.5 }, borderBottom: (t) => `1px solid ${alpha(t.palette.common.white, 0.08)}` }}>
             <Stack direction="row" spacing={1} alignItems="center">
-              <Typography variant="h6">{expense ? "Edit expense" : "Smart entry"}</Typography>
+              <Typography variant="h6">{expense ? "Edit expense" : "Add Expense"}</Typography>
               {!expense ? (
                 <Box
                   sx={(t) => ({

@@ -147,7 +147,7 @@ export const ExpensesList = () => {
             ))}
           </List>
           {!expensesQuery.isLoading && (expensesQuery.data?.length ?? 0) === 0 ? (
-            <Typography color="text.secondary">No expenses yet. Add one manually or try Smart Entry.</Typography>
+            <Typography color="text.secondary">No expenses yet. Add one manually or use Add Expense.</Typography>
           ) : null}
         </Stack>
       </CardContent>

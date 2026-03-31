@@ -8,22 +8,40 @@ import { RADIUS_CHIP, RADIUS_INNER, sectionLabelSx, surfaceCard } from "../../..
 type DashboardGoalCardProps = {
   goal: Goal | undefined;
   onOpenGoalDialog: () => void;
+  onCompleteGoal: () => void;
 };
 
-export const DashboardGoalCard = ({ goal, onOpenGoalDialog }: DashboardGoalCardProps) => (
+export const DashboardGoalCard = ({ goal, onOpenGoalDialog, onCompleteGoal }: DashboardGoalCardProps) => (
   <>
     <Typography sx={(theme) => ({ ...sectionLabelSx(theme), pt: 0.5 })}>Your goal</Typography>
 
     <Box sx={(theme) => ({ p: { xs: 1.75, sm: 2 }, ...surfaceCard(theme) })}>
       {goal ? (
         <Stack spacing={1.5}>
+          {(() => {
+            const progress = Math.round(getGoalProgress(goal));
+            const isReached = progress >= 100;
+            const isAlmost = progress >= 90 && progress < 100;
+            const isOverTargetNoEta = !goal.forecast.projectedEta && (goal.status === "at_risk" || !goal.forecast.isOnTrack);
+            const chipLabel = isReached
+              ? "★ Target reached"
+              : isAlmost
+                ? "Almost there"
+                : goal.forecast.projectedEta
+                  ? `On track · Est. ${formatShortDate(goal.forecast.projectedEta)}`
+                  : isOverTargetNoEta
+                    ? "Off track · above target spend"
+                    : "Needs data";
+            const accentColor = isReached ? "success.main" : isAlmost ? "warning.main" : "secondary.main";
+            return (
+              <>
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }}>
             <Box sx={{ minWidth: 0 }}>
               <Typography sx={{ fontWeight: 700, fontSize: "1.05rem" }}>
                 {goal.name} · {formatCurrency(goal.targetAmount)}
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
-                Target {formatShortDate(goal.targetDate)}
+                {goal.targetDate ? `Target ${formatShortDate(goal.targetDate)}` : "No deadline"} · Expense cap {formatCurrency(goal.targetExpense)}/mo
               </Typography>
             </Box>
             <Box
@@ -32,15 +50,15 @@ export const DashboardGoalCard = ({ goal, onOpenGoalDialog }: DashboardGoalCardP
                 px: 1.25,
                 py: 0.5,
                 borderRadius: RADIUS_CHIP,
-                bgcolor: alpha(theme.palette.secondary.main, 0.18),
-                color: "secondary.light",
+                bgcolor: alpha(theme.palette[isReached ? "success" : isAlmost ? "warning" : "secondary"].main, 0.18),
+                color: isReached ? "success.light" : isAlmost ? "warning.light" : "secondary.light",
                 fontSize: 12,
                 fontWeight: 700,
-                border: `1px solid ${alpha(theme.palette.secondary.main, 0.35)}`,
+                border: `1px solid ${alpha(theme.palette[isReached ? "success" : isAlmost ? "warning" : "secondary"].main, 0.35)}`,
                 whiteSpace: "nowrap",
               })}
             >
-              {goal.forecast.projectedEta ? `${formatShortDate(goal.forecast.projectedEta)}${goal.status === "at_risk" ? " · late" : ""}` : "Needs data"}
+              {chipLabel}
             </Box>
           </Stack>
 
@@ -53,7 +71,7 @@ export const DashboardGoalCard = ({ goal, onOpenGoalDialog }: DashboardGoalCardP
               bgcolor: alpha(theme.palette.common.white, 0.08),
               "& .MuiLinearProgress-bar": {
                 borderRadius: "5px",
-                bgcolor: theme.palette.secondary.main,
+                bgcolor: theme.palette[isReached ? "success" : isAlmost ? "warning" : "secondary"].main,
               },
             })}
           />
@@ -69,19 +87,33 @@ export const DashboardGoalCard = ({ goal, onOpenGoalDialog }: DashboardGoalCardP
 
           <Box sx={(theme) => ({ borderRadius: RADIUS_INNER, p: 1.5, bgcolor: alpha(theme.palette.common.white, 0.04), border: `1px solid ${alpha(theme.palette.common.white, 0.06)}` })}>
             <Typography variant="body2" sx={{ lineHeight: 1.55 }}>
-              {goal.aiEtaInsight}
+              {isReached
+                ? `You hit your goal. Saved an average of ${formatCurrency(goal.forecast.monthlySavingsRate)}/mo. Ready to start your next goal?`
+                : isAlmost
+                  ? `You're ${formatCurrency(Math.max(goal.targetAmount - goal.currentAmount, 0))} away — about one more month at your current pace.`
+                  : goal.aiEtaInsight}
             </Typography>
           </Box>
 
-          <Button color="inherit" onClick={onOpenGoalDialog} sx={{ minHeight: 44, alignSelf: "flex-start" }}>
-            Update goal inputs
-          </Button>
+          <Stack direction="row" justifyContent="space-between" spacing={1.25}>
+            <Button color="inherit" onClick={onOpenGoalDialog} sx={{ minHeight: 44 }}>
+              Edit goal
+            </Button>
+            {isAlmost || isReached ? (
+              <Button variant="outlined" color="inherit" onClick={onCompleteGoal} sx={{ minHeight: 44 }}>
+                {isReached ? "★ Complete goal" : "Mark as complete"}
+              </Button>
+            ) : null}
+          </Stack>
+              </>
+            );
+          })()}
         </Stack>
       ) : (
         <Stack spacing={1.5}>
           <Typography sx={{ fontWeight: 700 }}>No goal yet</Typography>
           <Typography color="text.secondary" variant="body2">
-            Add your budget and first savings goal to unlock the ETA forecast card.
+            Set your monthly target expense and first goal to unlock the ETA forecast card.
           </Typography>
           <Button variant="contained" color="secondary" onClick={onOpenGoalDialog} sx={{ minHeight: 44, alignSelf: "flex-start" }}>
             Set up goal

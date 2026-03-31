@@ -11,16 +11,28 @@ type GoalSetupDialogProps = {
   existingGoal?: Goal;
   open: boolean;
   onClose: () => void;
+  initialValues?: Partial<{
+    name: string;
+    targetAmount: number;
+    targetDate: string;
+    savedAmount: number;
+    targetExpense: number;
+  }>;
+  title?: string;
+  subtitle?: string;
+  submitLabel?: string;
 };
 
-export const GoalSetupDialog = ({ existingGoal, open, onClose }: GoalSetupDialogProps) => {
+export const GoalSetupDialog = ({ existingGoal, open, onClose, initialValues, title, subtitle, submitLabel }: GoalSetupDialogProps) => {
   const theme = useTheme();
   const fullScreen = useMediaQuery(theme.breakpoints.down("sm"));
   const queryClient = useQueryClient();
   const [form, setForm] = useState(() => ({
-    goalName: existingGoal?.name ?? "",
-    targetAmount: existingGoal?.targetAmount?.toString() ?? "",
-    targetDate: existingGoal?.targetDate ?? "",
+    goalName: existingGoal?.name ?? initialValues?.name ?? "",
+    targetAmount: existingGoal?.targetAmount?.toString() ?? (initialValues?.targetAmount != null ? String(initialValues.targetAmount) : ""),
+    targetDate: existingGoal?.targetDate ?? initialValues?.targetDate ?? "",
+    savedAmount: existingGoal?.savedAmount?.toString() ?? (initialValues?.savedAmount != null ? String(initialValues.savedAmount) : ""),
+    targetExpense: existingGoal?.targetExpense?.toString() ?? (initialValues?.targetExpense != null ? String(initialValues.targetExpense) : ""),
   }));
 
   const mutation = useMutation({
@@ -28,7 +40,9 @@ export const GoalSetupDialog = ({ existingGoal, open, onClose }: GoalSetupDialog
       const parsed = goalInputSchema.safeParse({
         name: form.goalName,
         targetAmount: Number(form.targetAmount),
-        targetDate: form.targetDate,
+        targetDate: form.targetDate || undefined,
+        savedAmount: form.savedAmount ? Number(form.savedAmount) : undefined,
+        targetExpense: Number(form.targetExpense),
       });
 
       if (!parsed.success) {
@@ -70,38 +84,65 @@ export const GoalSetupDialog = ({ existingGoal, open, onClose }: GoalSetupDialog
               borderBottom: `1px solid ${alpha(t.palette.common.white, 0.08)}`,
             })}
           >
-            <Typography variant="h6">{existingGoal ? "Goal details" : "Create goal"}</Typography>
+            <Typography variant="h6">{title ?? (existingGoal ? "Edit goal" : "Create goal")}</Typography>
             <IconButton onClick={onClose} color="inherit" sx={{ minWidth: 44, minHeight: 44 }}>
               <CloseRoundedIcon />
             </IconButton>
           </Stack>
 
           <Stack spacing={2} sx={{ p: { xs: 2, sm: 3 } }}>
-            <Typography variant="body2" color="text.secondary">
-              Name, target amount, and date drive your ETA forecast on the dashboard.
-            </Typography>
-
+            {subtitle ? (
+              <Typography variant="body2" color="text.secondary" sx={{ mt: -0.5 }}>
+                {subtitle}
+              </Typography>
+            ) : null}
             <TextField label="Goal name" value={form.goalName} onChange={(event) => setForm((current) => ({ ...current, goalName: event.target.value }))} />
-            <TextField label="Target amount" value={form.targetAmount} onChange={(event) => setForm((current) => ({ ...current, targetAmount: event.target.value }))} />
+
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25}>
+              <TextField
+                label="Target amount"
+                value={form.targetAmount}
+                onChange={(event) => setForm((current) => ({ ...current, targetAmount: event.target.value }))}
+                sx={{ flex: 1 }}
+              />
+              <TextField
+                label="Deadline"
+                type="date"
+                value={form.targetDate}
+                onChange={(event) => setForm((current) => ({ ...current, targetDate: event.target.value }))}
+                InputLabelProps={{ shrink: true }}
+                sx={{ flex: 1 }}
+              />
+            </Stack>
+
             <TextField
-              label="Target date"
-              type="date"
-              value={form.targetDate}
-              onChange={(event) => setForm((current) => ({ ...current, targetDate: event.target.value }))}
-              InputLabelProps={{ shrink: true }}
+              label="Monthly spending target"
+              value={form.targetExpense}
+              onChange={(event) => setForm((current) => ({ ...current, targetExpense: event.target.value }))}
+              helperText="Anything you spend under this each month counts as savings toward your goal."
+            />
+            <TextField
+              label="Already saved (optional)"
+              value={form.savedAmount}
+              onChange={(event) => setForm((current) => ({ ...current, savedAmount: event.target.value }))}
             />
 
             {mutation.error ? <Alert severity="error">{mutation.error.message}</Alert> : null}
 
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={() => mutation.mutate()}
-              disabled={mutation.isPending || !form.goalName.trim() || !form.targetAmount || !form.targetDate}
-              sx={{ minHeight: 48 }}
-            >
-              {mutation.isPending ? "Saving..." : existingGoal ? "Update goal" : "Create goal"}
-            </Button>
+            <Stack direction="row" spacing={1.25}>
+              <Button variant="outlined" color="inherit" onClick={onClose} sx={{ minHeight: 48, flex: 1 }}>
+                {existingGoal ? "Delete goal" : "Cancel"}
+              </Button>
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={() => mutation.mutate()}
+                disabled={mutation.isPending || !form.goalName.trim() || !form.targetAmount || !form.targetExpense}
+                sx={{ minHeight: 48, flex: 2 }}
+              >
+                {mutation.isPending ? "Saving..." : submitLabel ?? (existingGoal ? "Save changes" : "Create goal")}
+              </Button>
+            </Stack>
           </Stack>
         </Box>
       </DialogContent>

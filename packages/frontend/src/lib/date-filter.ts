@@ -1,17 +1,11 @@
-import { formatShortDate } from "./expense-ui.js";
+import { formatLocalIsoDate, formatShortDate } from "./expense-ui.js";
 
 export type DateFilterKind = "today" | "week" | "month" | "range";
 
 /** Expenses list: MTD / week-to-date / today. Reports: wider windows for chart aggregation. */
 export type DateFilterScope = "expenses" | "reports";
 
-/** Local calendar YYYY-MM-DD (avoid UTC drift from toISOString). */
-export const formatLocalIsoDate = (d: Date) => {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-};
+export { formatLocalIsoDate };
 
 const startOfMonthLocal = (d: Date) => new Date(d.getFullYear(), d.getMonth(), 1);
 
@@ -38,9 +32,8 @@ export const getReportsRangeForKind = (kind: Exclude<DateFilterKind, "range">): 
   const todayIso = formatLocalIsoDate(today);
 
   if (kind === "today") {
-    const mon = mondayOfWeekLocal(today);
-    const sun = sundayOfWeekLocal(today);
-    return { from: formatLocalIsoDate(mon), to: formatLocalIsoDate(sun) };
+    const start = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 7);
+    return { from: formatLocalIsoDate(start), to: todayIso };
   }
 
   if (kind === "week") {

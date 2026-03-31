@@ -1,7 +1,6 @@
 import { goalInputSchema } from "@expense-tracker/shared";
 
 import { AppError } from "../../lib/errors.js";
-import { getUserBudgetPlan } from "../budget/service.js";
 import { buildGoalEtaInsight } from "./insight.js";
 import { listExpenses } from "../expenses/repository.js";
 import { computeGoalForecast } from "./forecast.js";
@@ -29,9 +28,8 @@ export const updateUserGoal = async (userId: string, goalId: string, payload: un
 };
 
 export const recalculateGoalForecasts = async (userId: string) => {
-  const [goalDocuments, budgetPlan, expenses] = await Promise.all([
+  const [goalDocuments, expenses] = await Promise.all([
     listGoalDocuments(userId),
-    getUserBudgetPlan(userId),
     listExpenses(userId, {}),
   ]);
 
@@ -41,8 +39,10 @@ export const recalculateGoalForecasts = async (userId: string) => {
         goal: {
           targetAmount: goalDocument.targetAmount,
           targetDate: goalDocument.targetDate,
+          savedAmount: goalDocument.savedAmount,
+          createdAt: goalDocument.createdAt,
+          targetExpense: goalDocument.targetExpense,
         },
-        budgetPlan,
         expenses,
       });
 

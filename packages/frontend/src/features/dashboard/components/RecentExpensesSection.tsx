@@ -28,7 +28,7 @@ export const RecentExpensesSection = ({ expenses, onSelectExpense, onViewExpense
 
     <Box sx={(theme) => ({ overflow: "hidden", ...surfaceCard(theme) })}>
       {expenses.length === 0 ? (
-        <Typography sx={{ p: 2.5, color: "text.secondary" }}>No expenses yet. Start with Smart Entry.</Typography>
+        <Typography sx={{ p: 2.5, color: "text.secondary" }}>No expenses yet. Start with Add Expense.</Typography>
       ) : (
         expenses.map((expense, index) => (
           <Stack

@@ -1,48 +1,26 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import type { BudgetPlan, Expense } from "@expense-tracker/shared";
+import type { Expense } from "@expense-tracker/shared";
 
 import { computeGoalForecast } from "./forecast.js";
 
-test("computeGoalForecast returns insufficient_data without enough history", () => {
+test("computeGoalForecast uses target expense even without expense history", () => {
   const result = computeGoalForecast({
     goal: {
       targetAmount: 5000,
       targetDate: "2026-12-01",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      targetExpense: 1000,
     },
-    budgetPlan: null,
     expenses: [],
   });
 
-  assert.equal(result.status, "insufficient_data");
-  assert.equal(result.projection.projectedEta, null);
+  assert.equal(result.status, "on_track");
+  assert.ok(result.projection.projectedEta);
 });
 
 test("computeGoalForecast marks a goal on track when savings pace is healthy", () => {
-  const budgetPlan: BudgetPlan = {
-    id: "budget",
-    userId: "user",
-    monthlyIncome: 5000,
-    fixedCosts: 2000,
-    savingsTarget: 1000,
-    incomeSources: {
-      salary: 5000,
-      freelance: 0,
-      businessRevenue: 0,
-      passiveIncome: 0,
-    },
-    plannedExpenses: {
-      food: 300,
-      rent: 1200,
-      transport: 200,
-      subscriptions: 100,
-      shopping: 200,
-    },
-    categoryLimits: {},
-    updatedAt: "2026-03-27T00:00:00.000Z",
-  };
-
   const expenses: Expense[] = [
     {
       id: "1",
@@ -83,8 +61,9 @@ test("computeGoalForecast marks a goal on track when savings pace is healthy", (
     goal: {
       targetAmount: 3000,
       targetDate: "2026-06-30",
+      createdAt: "2026-03-01T00:00:00.000Z",
+      targetExpense: 2000,
     },
-    budgetPlan,
     expenses,
   });
 

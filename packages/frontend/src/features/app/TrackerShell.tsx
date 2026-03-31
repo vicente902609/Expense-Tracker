@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { Expense, User } from "@expense-tracker/shared";
+import type { Expense, Goal } from "@expense-tracker/shared";
 import { alpha } from "@mui/material/styles";
 import { Box, BottomNavigation, BottomNavigationAction, Button, CircularProgress, Stack, Typography } from "@mui/material";
 import HomeRoundedIcon from "@mui/icons-material/HomeRounded";
@@ -10,7 +10,7 @@ import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
 import { useQuery } from "@tanstack/react-query";
 
 import { listExpenses } from "../../api/expenses.js";
-import { getBudgetPlan, listGoals } from "../../api/goals.js";
+import { listGoals } from "../../api/goals.js";
 import { useCustomCategories } from "../../hooks/use-custom-categories.js";
 import { predefinedCategories } from "../../lib/expense-ui.js";
 import { appShellGradient, RADIUS_SHELL } from "../../theme/ui.js";
@@ -18,13 +18,12 @@ import { CategoriesView } from "../categories/CategoriesView.js";
 import { DashboardView } from "../dashboard/DashboardView.js";
 import { ExpenseEditorDialog } from "../expenses/ExpenseEditorDialog.js";
 import { ExpensesView } from "../expenses/ExpensesView.js";
-import { IncomeBalanceDialog } from "../goals/IncomeBalanceDialog.js";
+import { GoalCompletionDialog } from "../goals/GoalCompletionDialog.js";
 import { GoalSetupDialog } from "../goals/GoalSetupDialog.js";
 import { ReportsView } from "../reports/ReportsView.js";
 
 type TrackerShellProps = {
   onLogout: () => void;
-  user: User;
 };
 
 type TabValue = "home" | "expenses" | "reports" | "categories";
@@ -36,14 +35,17 @@ const tabs: Array<{ label: string; value: TabValue; icon: JSX.Element }> = [
   { label: "Categories", value: "categories", icon: <CategoryRoundedIcon /> },
 ];
 
-export const TrackerShell = ({ onLogout, user }: TrackerShellProps) => {
+export const TrackerShell = ({ onLogout }: TrackerShellProps) => {
   const [tab, setTab] = useState<TabValue>("home");
   const [editorOpen, setEditorOpen] = useState(false);
   const [expenseEditorSession, setExpenseEditorSession] = useState(0);
   const [goalDialogOpen, setGoalDialogOpen] = useState(false);
   const [goalDialogSession, setGoalDialogSession] = useState(0);
-  const [incomeDialogOpen, setIncomeDialogOpen] = useState(false);
-  const [incomeDialogSession, setIncomeDialogSession] = useState(0);
+  const [newGoalDialogOpen, setNewGoalDialogOpen] = useState(false);
+  const [newGoalDialogSession, setNewGoalDialogSession] = useState(0);
+  const [goalCompletionOpen, setGoalCompletionOpen] = useState(false);
+  const [nextGoalInitialSavedAmount, setNextGoalInitialSavedAmount] = useState(0);
+  const [nextGoalSubtitle, setNextGoalSubtitle] = useState<string | undefined>(undefined);
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
   const { categories: customCategories, isLoading: categoriesLoading } = useCustomCategories();
 
@@ -55,11 +57,6 @@ export const TrackerShell = ({ onLogout, user }: TrackerShellProps) => {
   const goalsQuery = useQuery({
     queryKey: ["goals"],
     queryFn: listGoals,
-  });
-
-  const budgetQuery = useQuery({
-    queryKey: ["budget-plan"],
-    queryFn: getBudgetPlan,
   });
 
   const expenses = expensesQuery.data ?? [];
@@ -78,12 +75,22 @@ export const TrackerShell = ({ onLogout, user }: TrackerShellProps) => {
     setGoalDialogOpen(true);
   };
 
-  const openIncomeDialog = () => {
-    setIncomeDialogSession((session) => session + 1);
-    setIncomeDialogOpen(true);
+  const openGoalCompletionDialog = () => {
+    if (!goal) {
+      return;
+    }
+    setGoalCompletionOpen(true);
   };
 
-  if (expensesQuery.isLoading || goalsQuery.isLoading || budgetQuery.isLoading || categoriesLoading) {
+  const openNewGoalDialog = ({ savedAmount, subtitle }: { savedAmount: number; subtitle: string }) => {
+    setGoalCompletionOpen(false);
+    setNextGoalInitialSavedAmount(savedAmount);
+    setNextGoalSubtitle(subtitle);
+    setNewGoalDialogSession((session) => session + 1);
+    setNewGoalDialogOpen(true);
+  };
+
+  if (expensesQuery.isLoading || goalsQuery.isLoading || categoriesLoading) {
     return (
       <Box
         sx={(theme) => ({
@@ -214,15 +221,13 @@ export const TrackerShell = ({ onLogout, user }: TrackerShellProps) => {
           >
             {tab === "home" ? (
               <DashboardView
-                budgetPlan={budgetQuery.data}
                 expenses={expenses}
                 goal={goal}
+                onCompleteGoal={openGoalCompletionDialog}
                 onOpenGoalDialog={openGoalDialog}
-                onOpenIncomeDialog={openIncomeDialog}
                 onOpenSmartEntry={() => openEditor()}
                 onSelectExpense={openEditor}
                 onViewExpenses={() => setTab("expenses")}
-                user={user}
               />
             ) : null}
             {tab === "expenses" ? (
@@ -257,13 +262,17 @@ export const TrackerShell = ({ onLogout, user }: TrackerShellProps) => {
         open={editorOpen}
         onClose={() => setEditorOpen(false)}
       />
-      <IncomeBalanceDialog
-        key={incomeDialogSession}
-        budgetPlan={budgetQuery.data}
-        open={incomeDialogOpen}
-        onClose={() => setIncomeDialogOpen(false)}
-      />
       <GoalSetupDialog key={goalDialogSession} existingGoal={goal} open={goalDialogOpen} onClose={() => setGoalDialogOpen(false)} />
+      <GoalSetupDialog
+        key={`new-${newGoalDialogSession}`}
+        initialValues={{ savedAmount: nextGoalInitialSavedAmount, targetExpense: goal?.targetExpense ?? 0 }}
+        open={newGoalDialogOpen}
+        submitLabel="Start goal"
+        subtitle={nextGoalSubtitle}
+        title="New goal"
+        onClose={() => setNewGoalDialogOpen(false)}
+      />
+      {goal ? <GoalCompletionDialog goal={goal as Goal} open={goalCompletionOpen} onClose={() => setGoalCompletionOpen(false)} onProceed={openNewGoalDialog} /> : null}
     </Box>
   );
 };

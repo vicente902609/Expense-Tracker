@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { parseExpenseText } from "../../../api/ai.js";
 import { createExpense, deleteExpense, updateExpense } from "../../../api/expenses.js";
+import { formatLocalIsoDate } from "../../../lib/expense-ui.js";
 
 export type ExpenseFormState = {
   amount: string;
@@ -14,7 +15,7 @@ export type ExpenseFormState = {
 
 const createEmptyForm = (): ExpenseFormState => ({
   amount: "",
-  date: new Date().toISOString().slice(0, 10),
+  date: formatLocalIsoDate(new Date()),
   description: "",
   category: "",
 });
@@ -43,7 +44,7 @@ export const useExpenseEditor = (expense: Expense | null | undefined, onClose: (
     onSuccess: (data) => {
       setForm({
         amount: data.amount?.toString() ?? "",
-        date: data.date ?? new Date().toISOString().slice(0, 10),
+        date: data.date ?? formatLocalIsoDate(new Date()),
         description: data.description ?? "",
         category: data.category ?? "",
       });

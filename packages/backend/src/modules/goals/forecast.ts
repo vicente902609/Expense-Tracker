@@ -1,10 +1,9 @@
-import type { BudgetPlan, Expense, Goal, GoalProjection } from "@expense-tracker/shared";
+import type { Expense, Goal, GoalProjection } from "@expense-tracker/shared";
 
 import { addDays, differenceInDays, getIsoDate, toMonthKey } from "../../lib/date.js";
 
 type ForecastInputs = {
-  goal: Pick<Goal, "targetAmount" | "targetDate">;
-  budgetPlan: BudgetPlan | null;
+  goal: Pick<Goal, "targetAmount" | "targetDate" | "savedAmount" | "createdAt" | "targetExpense">;
   expenses: Expense[];
 };
 
@@ -14,7 +13,7 @@ type ForecastResult = {
   insightSeed: {
     monthlySavingsRate: number;
     projectedEta: string | null;
-    targetDate: string;
+    targetDate: string | null;
     suggestedCategoryCut: string | null;
     suggestedCutAmount: number;
     status: Goal["status"];
@@ -29,6 +28,19 @@ const getCurrentMonthSpend = (expenses: Expense[]) => {
   return sum(expenses.filter((expense) => toMonthKey(expense.date) === monthKey).map((expense) => expense.amount));
 };
 
+const getMonthRange = (fromIso: string, toIso: string) => {
+  const [fromYear, fromMonth] = fromIso.slice(0, 7).split("-").map(Number);
+  const [toYear, toMonth] = toIso.slice(0, 7).split("-").map(Number);
+  const out: string[] = [];
+  const cursor = new Date(fromYear, fromMonth - 1, 1);
+  const end = new Date(toYear, toMonth - 1, 1);
+  while (cursor <= end) {
+    out.push(`${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}`);
+    cursor.setMonth(cursor.getMonth() + 1);
+  }
+  return out;
+};
+
 const getTopCategory = (expenses: Expense[]) => {
   const totals = new Map<string, number>();
 
@@ -39,32 +51,18 @@ const getTopCategory = (expenses: Expense[]) => {
   return [...totals.entries()].sort((left, right) => right[1] - left[1])[0] ?? null;
 };
 
-export const computeGoalForecast = ({ goal, budgetPlan, expenses }: ForecastInputs): ForecastResult => {
-  if (!budgetPlan || expenses.length < 3) {
-    return {
-      currentAmount: 0,
-      status: "insufficient_data",
-      insightSeed: {
-        monthlySavingsRate: 0,
-        projectedEta: null,
-        targetDate: goal.targetDate,
-        suggestedCategoryCut: null,
-        suggestedCutAmount: 0,
-        status: "insufficient_data",
-      },
-      projection: {
-        monthlySavingsRate: 0,
-        projectedEta: null,
-        isOnTrack: false,
-        shortfallAmount: goal.targetAmount,
-        paceWindowDays: 30,
-      },
-    };
-  }
-
+export const computeGoalForecast = ({ goal, expenses }: ForecastInputs): ForecastResult => {
   const currentMonthSpend = getCurrentMonthSpend(expenses);
-  const monthlySavingsRate = Math.max(budgetPlan.monthlyIncome - budgetPlan.fixedCosts - currentMonthSpend, 0);
-  const currentAmount = Math.max(budgetPlan.savingsTarget, 0);
+  const monthlySavingsRate = goal.targetExpense - currentMonthSpend;
+  const todayIso = getIsoDate();
+  const trackedMonths = getMonthRange(goal.createdAt, todayIso);
+  const monthSpend = expenses.reduce<Record<string, number>>((acc, expense) => {
+    const monthKey = toMonthKey(expense.date);
+    acc[monthKey] = (acc[monthKey] ?? 0) + expense.amount;
+    return acc;
+  }, {});
+  const trackedSavings = trackedMonths.map((monthKey) => goal.targetExpense - (monthSpend[monthKey] ?? 0));
+  const currentAmount = Math.max(Math.max(goal.savedAmount ?? 0, 0) + sum(trackedSavings), 0);
   const remainingAmount = Math.max(goal.targetAmount - currentAmount, 0);
 
   if (remainingAmount === 0) {
@@ -73,15 +71,15 @@ export const computeGoalForecast = ({ goal, budgetPlan, expenses }: ForecastInpu
       status: "achieved",
       insightSeed: {
         monthlySavingsRate,
-        projectedEta: getIsoDate(),
-        targetDate: goal.targetDate,
+        projectedEta: todayIso,
+        targetDate: goal.targetDate ?? null,
         suggestedCategoryCut: null,
         suggestedCutAmount: 0,
         status: "achieved",
       },
       projection: {
         monthlySavingsRate,
-        projectedEta: getIsoDate(),
+        projectedEta: todayIso,
         isOnTrack: true,
         shortfallAmount: 0,
         paceWindowDays: 30,
@@ -96,7 +94,7 @@ export const computeGoalForecast = ({ goal, budgetPlan, expenses }: ForecastInpu
       insightSeed: {
         monthlySavingsRate,
         projectedEta: null,
-        targetDate: goal.targetDate,
+        targetDate: goal.targetDate ?? null,
         suggestedCategoryCut: getTopCategory(expenses)?.[0] ?? null,
         suggestedCutAmount: 100,
         status: "at_risk",
@@ -112,12 +110,12 @@ export const computeGoalForecast = ({ goal, budgetPlan, expenses }: ForecastInpu
   }
 
   const monthsNeeded = Math.ceil(remainingAmount / monthlySavingsRate);
-  const projectedEta = addDays(getIsoDate(), monthsNeeded * 30);
-  const isOnTrack = projectedEta <= goal.targetDate;
+  const projectedEta = addDays(todayIso, monthsNeeded * 30);
+  const isOnTrack = goal.targetDate ? projectedEta <= goal.targetDate : true;
   const topCategory = getTopCategory(expenses);
   const suggestedCutAmount = topCategory ? Math.min(Math.round(topCategory[1] * 0.15), 150) : 0;
-  const monthsUntilDeadline = Math.max(differenceInDays(getIsoDate(), goal.targetDate) / 30, 0);
-  const shortfallAmount = isOnTrack ? 0 : Math.max(remainingAmount - monthlySavingsRate * monthsUntilDeadline, 0);
+  const monthsUntilDeadline = goal.targetDate ? Math.max(differenceInDays(todayIso, goal.targetDate) / 30, 0) : 0;
+  const shortfallAmount = goal.targetDate ? (isOnTrack ? 0 : Math.max(remainingAmount - monthlySavingsRate * monthsUntilDeadline, 0)) : 0;
 
   return {
     currentAmount,
@@ -125,7 +123,7 @@ export const computeGoalForecast = ({ goal, budgetPlan, expenses }: ForecastInpu
     insightSeed: {
       monthlySavingsRate,
       projectedEta,
-      targetDate: goal.targetDate,
+      targetDate: goal.targetDate ?? null,
       suggestedCategoryCut: topCategory?.[0] ?? null,
       suggestedCutAmount,
       status: isOnTrack ? "on_track" : "at_risk",

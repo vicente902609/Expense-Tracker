@@ -32,7 +32,7 @@ export const SmartEntryCard = ({ onOpenSmartEntry }: SmartEntryCardProps) => (
         onClick={onOpenSmartEntry}
         sx={{ minHeight: 48, px: 2.5, flexShrink: 0 }}
       >
-        Smart Entry
+        Add Expense
       </Button>
     </Stack>
   </Box>

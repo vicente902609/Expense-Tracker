@@ -186,57 +186,12 @@ export const renameCustomCategorySchema = z.object({
 export type AddCustomCategoryInput = z.infer<typeof addCustomCategorySchema>;
 export type RenameCustomCategoryInput = z.infer<typeof renameCustomCategorySchema>;
 
-export const incomeSourcesSchema = z.object({
-  salary: z.number().nonnegative().default(0),
-  freelance: z.number().nonnegative().default(0),
-  businessRevenue: z.number().nonnegative().default(0),
-  passiveIncome: z.number().nonnegative().default(0),
-});
-
-export const plannedExpensesSchema = z.object({
-  food: z.number().nonnegative().default(0),
-  rent: z.number().nonnegative().default(0),
-  transport: z.number().nonnegative().default(0),
-  subscriptions: z.number().nonnegative().default(0),
-  shopping: z.number().nonnegative().default(0),
-});
-
-export type IncomeSources = z.infer<typeof incomeSourcesSchema>;
-export type PlannedExpenses = z.infer<typeof plannedExpensesSchema>;
-
-export const budgetPlanInputSchema = z.object({
-  monthlyIncome: z.number().nonnegative(),
-  fixedCosts: z.number().nonnegative(),
-  savingsTarget: z.number().nonnegative(),
-  incomeSources: incomeSourcesSchema.default({
-    salary: 0,
-    freelance: 0,
-    businessRevenue: 0,
-    passiveIncome: 0,
-  }),
-  plannedExpenses: plannedExpensesSchema.default({
-    food: 0,
-    rent: 0,
-    transport: 0,
-    subscriptions: 0,
-    shopping: 0,
-  }),
-  categoryLimits: z.record(z.string(), z.number().nonnegative()),
-});
-
-export const budgetPlanSchema = budgetPlanInputSchema.extend({
-  id: z.string(),
-  userId: z.string(),
-  updatedAt: z.string(),
-});
-
-export type BudgetPlanInput = z.infer<typeof budgetPlanInputSchema>;
-export type BudgetPlan = z.infer<typeof budgetPlanSchema>;
-
 export const goalInputSchema = z.object({
   name: z.string().trim().min(1).max(80),
   targetAmount: z.number().positive(),
-  targetDate: isoDateSchema,
+  targetDate: isoDateSchema.optional(),
+  savedAmount: z.number().nonnegative().optional(),
+  targetExpense: z.number().nonnegative(),
 });
 
 export const goalProjectionSchema = z.object({
