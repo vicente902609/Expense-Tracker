@@ -12,7 +12,6 @@ import {
   getCategoryColor,
   getCategoryTotals,
   getDailySeriesForRange,
-  getMonthlySeries,
   getMonthlySeriesForRange,
   getWeeklySeriesForRange,
 } from "../../lib/expense-ui.js";
@@ -24,15 +23,15 @@ type ReportsViewProps = {
 
 const chartTitleForKind = (kind: DateFilterKind) => {
   if (kind === "today") {
-    return "Daily";
+    return "This week";
   }
   if (kind === "week") {
-    return "Weekly";
+    return "This month";
   }
   if (kind === "month") {
-    return "Monthly";
+    return "Last 6 months";
   }
-  return "Range";
+  return "Custom range";
 };
 
 type SeriesResult = {
@@ -42,13 +41,13 @@ type SeriesResult = {
 
 const buildReportSeries = (kind: DateFilterKind, filtered: Expense[], fromIso: string, toIso: string): SeriesResult => {
   if (kind === "today") {
-    return { series: getDailySeriesForRange(filtered, fromIso, toIso), bucketLabel: "day" };
+    return { series: getDailySeriesForRange(filtered, fromIso, toIso, { weekdayLabels: true }), bucketLabel: "day" };
   }
   if (kind === "week") {
     return { series: getWeeklySeriesForRange(filtered, fromIso, toIso), bucketLabel: "week" };
   }
   if (kind === "month") {
-    return { series: getMonthlySeries(filtered), bucketLabel: "month" };
+    return { series: getMonthlySeriesForRange(filtered, fromIso, toIso), bucketLabel: "month" };
   }
 
   const days = daysInclusiveInRange(fromIso, toIso);
@@ -101,7 +100,7 @@ export const ReportsView = ({ expenses }: ReportsViewProps) => {
             Spending insights
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-            Compare daily, weekly, monthly, or custom ranges
+            This week by day, this month by week, or last 6 months by month — or pick a custom range
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 1, fontWeight: 600 }}>
             Showing {formatDateRangeLabel(fromDate, toDate)}
@@ -112,7 +111,7 @@ export const ReportsView = ({ expenses }: ReportsViewProps) => {
           align="right"
           fromDate={fromDate}
           kind={kind}
-          labels={{ today: "Daily", week: "Weekly", month: "Monthly", range: "Date range" }}
+          labels={{ today: "This week", week: "This month", month: "Last 6 months", range: "Date range" }}
           scope="reports"
           toDate={toDate}
           onApplyRange={applyCustomRange}
@@ -124,7 +123,7 @@ export const ReportsView = ({ expenses }: ReportsViewProps) => {
         <Box sx={(theme) => ({ overflow: "hidden", ...surfaceCard(theme) })}>
           <Box sx={(theme) => ({ p: 2, borderBottom: `1px solid ${alpha(theme.palette.common.white, 0.08)}` })}>
             <Typography sx={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: "text.secondary", textTransform: "uppercase" }}>
-              {chartTitleForKind(kind)} · chart
+              {chartTitleForKind(kind)} · spending
             </Typography>
           </Box>
           <Box sx={{ p: 2 }}>

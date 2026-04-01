@@ -18,29 +18,28 @@ export const mondayOfWeekLocal = (d: Date) => {
   return date;
 };
 
-const sundayOfWeekLocal = (d: Date) => {
-  const sun = new Date(mondayOfWeekLocal(d));
-  sun.setDate(sun.getDate() + 6);
-  return sun;
-};
+const endOfMonthLocal = (d: Date) => new Date(d.getFullYear(), d.getMonth() + 1, 0);
 
 /**
- * Reports: Daily = full Mon–Sun week; Weekly = last 8 weeks (Mon-start); Monthly = last 6 calendar months (incl. current).
+ * Reports presets (see Reports UI chip labels):
+ * - `today` → this calendar week’s weekdays only (Mon–Fri), daily buckets
+ * - `week` → full current calendar month, weekly (Mon-start) buckets
+ * - `month` → from first day of month 5 months ago through today, monthly buckets (6 month windows)
  */
 export const getReportsRangeForKind = (kind: Exclude<DateFilterKind, "range">): { from: string; to: string } => {
   const today = new Date();
   const todayIso = formatLocalIsoDate(today);
 
   if (kind === "today") {
-    const start = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 7);
-    return { from: formatLocalIsoDate(start), to: todayIso };
+    const mon = mondayOfWeekLocal(today);
+    const fri = new Date(mon.getFullYear(), mon.getMonth(), mon.getDate() + 4);
+    return { from: formatLocalIsoDate(mon), to: formatLocalIsoDate(fri) };
   }
 
   if (kind === "week") {
-    const monThis = mondayOfWeekLocal(today);
-    const sunEnd = sundayOfWeekLocal(today);
-    const monStart = new Date(monThis.getFullYear(), monThis.getMonth(), monThis.getDate() - 7 * 7);
-    return { from: formatLocalIsoDate(monStart), to: formatLocalIsoDate(sunEnd) };
+    const start = startOfMonthLocal(today);
+    const end = endOfMonthLocal(today);
+    return { from: formatLocalIsoDate(start), to: formatLocalIsoDate(end) };
   }
 
   const start = new Date(today.getFullYear(), today.getMonth() - 5, 1);

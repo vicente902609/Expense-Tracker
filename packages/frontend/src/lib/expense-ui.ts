@@ -227,10 +227,25 @@ const mondayOfLocalWeek = (d: Date) => {
   return x;
 };
 
+const formatWeekdayShortLabel = (iso: string) => {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Intl.DateTimeFormat("en-US", { weekday: "short" }).format(new Date(y, m - 1, d));
+};
+
+type DailySeriesOptions = {
+  /** Use Mon/Tue/… instead of month+day (e.g. Reports “This week” weekdays). */
+  weekdayLabels?: boolean;
+};
+
 /**
  * Every calendar day in [fromIso, toIso] with spend, including zero when no expense that day.
  */
-export const getDailySeriesForRange = (expenses: Expense[], fromIso: string, toIso: string): ChartSeriesPoint[] => {
+export const getDailySeriesForRange = (
+  expenses: Expense[],
+  fromIso: string,
+  toIso: string,
+  options?: DailySeriesOptions,
+): ChartSeriesPoint[] => {
   const totals = expenses.reduce<Record<string, number>>((acc, expense) => {
     if (expense.date >= fromIso && expense.date <= toIso) {
       acc[expense.date] = (acc[expense.date] ?? 0) + expense.amount;
@@ -241,9 +256,14 @@ export const getDailySeriesForRange = (expenses: Expense[], fromIso: string, toI
   const out: ChartSeriesPoint[] = [];
   const cursor = parseLocalIsoDate(fromIso);
   const end = parseLocalIsoDate(toIso);
+  const useWeekday = Boolean(options?.weekdayLabels);
   while (cursor <= end) {
     const key = toLocalIso(cursor);
-    out.push({ key, label: formatShortDate(key), total: totals[key] ?? 0 });
+    out.push({
+      key,
+      label: useWeekday ? formatWeekdayShortLabel(key) : formatShortDate(key),
+      total: totals[key] ?? 0,
+    });
     cursor.setDate(cursor.getDate() + 1);
   }
   return out;
