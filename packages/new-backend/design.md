@@ -117,9 +117,25 @@ Predefined items are written by a one-shot seed script (`scripts/seed-categories
 - `GET /reports/monthly?startDate=&endDate=` — spending totals per month
 - `GET /reports/by-category?startDate=&endDate=` — breakdown by category
 
+**AI** *(requires JWT)*
+- `POST /ai/parse-expense` — parse a natural-language expense description with OpenAI and return structured fields; body: `{ text* (3–500 chars), timezone (IANA, default "UTC"), referenceDate? (YYYY-MM-DD) }`; returns:
+  ```json
+  {
+    "amount": 12.50,
+    "description": "Lunch with client",
+    "category": "Food",
+    "date": "2026-03-31",
+    "confidence": 0.95,
+    "notes": ["Resolved 'yesterday' relative to referenceDate"]
+  }
+  ```
+  - `category` is resolved against the user's predefined + custom category allowlist; falls back to `"Other"` when no match.
+  - `amount`, `description`, `date` are `null` if the model cannot determine them.
+  - Returns `503` when `OPENAI_API_KEY` / `OPENAI_MODEL` env vars are missing; `502` on model error.
+
 ---
 
-## Lambda Architecture (1 per route = 16 functions)
+## Lambda Architecture (1 per route = 17 functions)
 
 Each handler is a thin entry point — parses input, calls service, returns HTTP response.
 
@@ -130,13 +146,18 @@ packages/new-backend/src/
     categories/    list.ts  create.ts  update.ts  delete.ts
     expenses/      list.ts  create.ts  get.ts  update.ts  delete.ts
     reports/       monthly.ts  by-category.ts
+    ai/            parse-expense.ts
   services/        auth.service.ts  categories.service.ts
-                   expenses.service.ts  reports.service.ts
+                   expenses.service.ts  reports.service.ts  ai.service.ts
   repositories/    user.repository.ts  category.repository.ts
                    expense.repository.ts
   middleware/      auth.ts (JWT Middy)  error.ts (centralised error handler)
   models/          user.ts  expense.ts  category.ts  common.ts
   lib/             dynamo.ts  jwt.ts  response.ts  validation.ts (Zod)
+                   openai/
+                     client.ts          (generic callOpenAI<T>, OpenAICallOptions, error constants)
+                     parse-expense.ts   (ParseExpensePrompt, ParsedExpenseModel, buildParseExpenseOptions)
+                     index.ts           (re-exports)
   scripts/         seed-categories.ts
   serverless.yml   package.json  tsconfig.json  jest.config.ts
 ```
@@ -153,6 +174,7 @@ packages/new-backend/src/
 | Passwords | `bcryptjs` |
 | Validation | `zod` |
 | IDs | `uuid` |
+| AI | raw `fetch` to OpenAI Responses API (`https://api.openai.com/v1/responses`) |
 | Bundling | `serverless` + `serverless-esbuild` |
 | Testing | `jest` + `ts-jest` |
 

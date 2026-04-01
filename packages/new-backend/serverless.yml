@@ -16,6 +16,8 @@ provider:
     TABLE_NAME: expense-tracker-${self:provider.stage}
     JWT_SECRET: ${env:JWT_SECRET}
     REFRESH_TOKEN_SECRET: ${env:REFRESH_TOKEN_SECRET}
+    OPENAI_API_KEY: ${env:OPENAI_API_KEY, ''}
+    OPENAI_MODEL: ${env:OPENAI_MODEL, ''}
   httpApi:
     cors: true
   iam:
@@ -131,6 +133,14 @@ functions:
       - httpApi:
           method: GET
           path: /reports/by-category
+
+  # ── AI ─────────────────────────────────────────────────────────────────────
+  aiParseExpense:
+    handler: src/handlers/ai/parse-expense.handler
+    events:
+      - httpApi:
+          method: POST
+          path: /ai/parse-expense
 
 custom:
   esbuild:
