@@ -8,6 +8,7 @@
     "dev": "pnpm --parallel --filter @expense-tracker/backend --filter @expense-tracker/frontend dev",
     "lint": "pnpm -r lint",
     "lint:fix": "eslint packages/backend/src packages/frontend/src packages/shared/src --fix --max-warnings=0",
+    "deploy": "pnpm --filter @expense-tracker/backend-new run deploy",
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck"
   },

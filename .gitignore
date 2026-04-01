@@ -7,3 +7,8 @@ dist
 coverage
 pnpm-lock.yaml
 packages/*/src/**/*.js
+
+# Build outputs
+.build/
+.serverless/
+.esbuild/
