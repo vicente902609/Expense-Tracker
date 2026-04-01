@@ -53,16 +53,25 @@ const getTopCategory = (expenses: Expense[]) => {
   return [...totals.entries()].sort((left, right) => right[1] - left[1])[0] ?? null;
 };
 
+/** Last calendar day of the month before `todayIso` (UTC calendar, aligned with `getIsoDate`). */
+const lastDayOfPreviousCalendarMonth = (todayIso: string): string => {
+  const [y, m] = todayIso.split("-").map(Number);
+  const lastPrev = new Date(Date.UTC(y, m - 1, 0));
+  return lastPrev.toISOString().slice(0, 10);
+};
+
 export const computeGoalForecast = ({ goal, expenses, asOfIsoDate }: ForecastInputs): ForecastResult => {
   const todayIso = asOfIsoDate ?? getIsoDate();
   const currentMonthSpend = getCurrentMonthSpend(expenses, todayIso);
   const monthlySavingsRate = goal.targetExpense - currentMonthSpend;
-  const trackedMonths = getMonthRange(goal.createdAt, todayIso);
+  const savingsThroughIso = lastDayOfPreviousCalendarMonth(todayIso);
+  const trackedMonths = getMonthRange(goal.createdAt, savingsThroughIso);
   const monthSpend = expenses.reduce<Record<string, number>>((acc, expense) => {
     const monthKey = toMonthKey(expense.date);
     acc[monthKey] = (acc[monthKey] ?? 0) + expense.amount;
     return acc;
   }, {});
+  // Saved progress uses completed calendar months only (not the in-progress current month).
   const trackedSavings = trackedMonths.map((monthKey) => goal.targetExpense - (monthSpend[monthKey] ?? 0));
   const currentAmount = Math.max(Math.max(goal.savedAmount ?? 0, 0) + sum(trackedSavings), 0);
   const remainingAmount = Math.max(goal.targetAmount - currentAmount, 0);

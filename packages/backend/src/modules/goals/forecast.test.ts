@@ -29,13 +29,46 @@ test("computeGoalForecast marks a goal on track when savings pace is healthy", (
       amount: 200,
       description: "Groceries",
       category: "Food",
+      date: "2026-02-01",
+      aiParsed: false,
+      createdAt: "2026-02-01T00:00:00.000Z",
+      updatedAt: "2026-02-01T00:00:00.000Z",
+    },
+    {
+      id: "2",
+      userId: "user",
+      amount: 150,
+      description: "Gas",
+      category: "Transport",
+      date: "2026-02-07",
+      aiParsed: false,
+      createdAt: "2026-02-07T00:00:00.000Z",
+      updatedAt: "2026-02-07T00:00:00.000Z",
+    },
+    {
+      id: "3",
+      userId: "user",
+      amount: 120,
+      description: "Dinner",
+      category: "Food",
+      date: "2026-02-11",
+      aiParsed: false,
+      createdAt: "2026-02-11T00:00:00.000Z",
+      updatedAt: "2026-02-11T00:00:00.000Z",
+    },
+    {
+      id: "4",
+      userId: "user",
+      amount: 200,
+      description: "Groceries",
+      category: "Food",
       date: "2026-03-01",
       aiParsed: false,
       createdAt: "2026-03-01T00:00:00.000Z",
       updatedAt: "2026-03-01T00:00:00.000Z",
     },
     {
-      id: "2",
+      id: "5",
       userId: "user",
       amount: 150,
       description: "Gas",
@@ -46,7 +79,7 @@ test("computeGoalForecast marks a goal on track when savings pace is healthy", (
       updatedAt: "2026-03-07T00:00:00.000Z",
     },
     {
-      id: "3",
+      id: "6",
       userId: "user",
       amount: 120,
       description: "Dinner",
@@ -60,15 +93,17 @@ test("computeGoalForecast marks a goal on track when savings pace is healthy", (
 
   const result = computeGoalForecast({
     goal: {
-      targetAmount: 3000,
+      targetAmount: 6500,
       targetDate: "2026-06-30",
-      createdAt: "2026-03-01T00:00:00.000Z",
+      createdAt: "2026-01-01T00:00:00.000Z",
       targetExpense: 2000,
     },
     expenses,
     asOfIsoDate: "2026-03-31",
   });
 
+  // Jan 2000 + Feb 1530 saved; March (partial) excluded from saved total.
+  assert.equal(result.currentAmount, 3530);
   assert.equal(result.status, "on_track");
   assert.equal(result.projection.isOnTrack, true);
   assert.ok(result.projection.projectedEta);
