@@ -96,7 +96,7 @@ export const ReportsView = ({ categoryPalette }: ReportsViewProps) => {
             Spending insights
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-            Last 6 months or this year — or pick a custom range. Monthly and category totals are loaded from the server.
+            See spending by month and by category. Use a preset or choose any date range that fits how you review your money.
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 1, fontWeight: 600 }}>
             Showing {formatDateRangeLabel(fromDate, toDate)}
