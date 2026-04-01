@@ -1,187 +1,152 @@
 # Expense Tracker
 
-A monorepo full-stack assessment project for **Option 1: Personal Expense Tracker** with two AI-assisted features:
+Personal expense tracker monorepo: **React + Vite + MUI** frontend, **Express + MongoDB** backend, shared **Zod** contracts. Includes **AI-assisted expense parsing** and **goal ETA forecasting**.
 
-- **NL Expense Entry**: parse natural-language expense text into structured form data
-- **Goal ETA Forecast**: keep a visible savings goal card updated with a projected ETA and actionable insight
+**Repository:** `https://github.com/YOUR_USERNAME/Expense-Tracker` (replace with your fork)
 
-The current local-first implementation uses **React + Vite + MUI** on the frontend and **Express + MongoDB** on the backend for fast iteration. The backend is structured so the HTTP layer can be swapped for **AWS Lambda + API Gateway** later without rewriting the domain logic.
+**Deployed:** add your production frontend/API URLs here when available.
 
-## Stack
+## Prerequisites
 
-- Frontend: React 18, TypeScript, Vite, MUI, React Query
-- Backend: Node.js 20+, TypeScript, Express.js, MongoDB native driver
-- Shared: TypeScript types and Zod schemas in one package
-- AI: server-side LLM integration with deterministic fallbacks
+| Tool | Version / notes |
+|------|-----------------|
+| Node.js | 20+ |
+| pnpm | 10+ (see `packageManager` in root `package.json`) |
+| MongoDB | Local instance or [MongoDB Atlas](https://www.mongodb.com/cloud/atlas) connection string |
+| OpenAI (optional) | API key for live NL expense parsing |
 
-## Monorepo Layout
+Optional: **AWS CLI** only if you deploy to AWS later; not required for local dev.
+
+## Monorepo layout
 
 ```text
 packages/
-  backend/   Express API, Mongo access, auth, AI, forecasting
-  frontend/  React app with auth, dashboard, smart entry, goals
-  shared/    Shared types and validation schemas
+  backend/   Express API, MongoDB, auth, AI, goal forecasting
+  frontend/  React app (Vite, MUI, React Query)
+  shared/    Shared types and Zod schemas
 ```
 
-## Architecture Notes
+### Architecture (high level)
 
-### Shared Contracts
+- **Shared** (`@expense-tracker/shared`): request/response shapes and validation — single source of truth for API contracts.
+- **Backend**: `config/` (env), `middleware/` (auth, errors), `modules/*/repository.ts` (data access), `modules/*/service.ts` (rules), `modules/*/routes.ts` (HTTP).
+- **Frontend**: feature folders under `src/features/`, API clients under `src/api/`, theme and layout for responsive UI.
 
-`packages/shared` defines the core request/response types and validation schemas once. Both the frontend and backend import those contracts, which keeps payloads aligned and reduces drift.
+### Design choices
 
-### Backend Layering
+- **Zod at boundaries** — invalid payloads fail fast with clear messages.
+- **Server-side date hints** — calendar `referenceDate` + IANA `timezone` from the client; natural-language dates normalized with **chrono-node** where possible, with OpenAI for structured fields.
+- **Forecast `asOfIsoDate`** — optional parameter on `computeGoalForecast` for deterministic tests; production uses “today”.
 
-The backend is intentionally simple:
+## Environment variables
 
-- `config/`: environment parsing and validation
-- `middleware/`: auth and centralized error handling
-- `modules/*/repository.ts`: database access only
-- `modules/*/service.ts`: validation and business rules
-- `modules/*/routes.ts`: HTTP routing
+Use the **`.env.example`** files as copy-paste sources; each file lists variables with short comments.
 
-This keeps responsibilities narrow and makes a future Lambda migration straightforward.
+| File to create | Copy from |
+|----------------|-----------|
+| Repo root `.env` (optional) | `.env.example` |
+| `packages/backend/.env` | `packages/backend/.env.example` |
+| `packages/frontend/.env` | `packages/frontend/.env.example` |
 
-### AI Design
+**Backend (required):** `MONGODB_URI`, `MONGODB_DB_NAME`, `JWT_SECRET` (min 16 characters), `CLIENT_ORIGIN`.  
+**Backend (optional):** `OPENAI_API_KEY`, `OPENAI_MODEL` — without them, AI parse returns a friendly error (logged server-side).
 
-#### 1. NL Expense Entry
+**Frontend (required):** `VITE_API_BASE_URL` — must point at `/api/v1` on your backend.
 
-`POST /api/v1/ai/parse-expense`
+Invalid backend env vars throw on startup **after** a `console.error` with field-level detail. Missing `VITE_API_BASE_URL` throws at app load with a message pointing at `packages/frontend/.env.example`.
 
-- relative dates like `yesterday` and `last Tuesday` are resolved **server-side first**
-- the resolved date is passed into the AI context rather than asking the model to infer it blindly
-- uncertain fields should return `null`
-- if `OPENAI_API_KEY` is missing or the model fails, a deterministic fallback parser still returns a usable response
+## Setup (step by step)
 
-#### 2. Goal ETA Forecast
+1. Install dependencies:
 
-`GET /api/v1/goals`
+   ```bash
+   pnpm install
+   ```
 
-- goals are always visible on the dashboard
-- forecast data travels with the goal payload
-- forecast recalculation runs whenever goals are listed and after expense, budget, or category bulk-updates
-- the generated insight string is stored on the goal document (updated each recalculation)
-- if there is not enough history, the API returns an explicit insufficient-data message instead of a misleading prediction
+2. Start MongoDB locally (or use Atlas and put the URI in `packages/backend/.env`).
 
-### Categories
+3. Copy env files:
 
-Custom categories are stored on the user document in MongoDB (not browser storage). Renaming or deleting a custom category updates all matching expenses in one bulk operation and refreshes goal forecasts.
+   ```bash
+   copy packages\backend\.env.example packages\backend\.env
+   copy packages\frontend\.env.example packages\frontend\.env
+   ```
 
-- `GET /api/v1/categories` — `{ custom: string[] }`
-- `POST /api/v1/categories` — `{ name }`
-- `PATCH /api/v1/categories` — `{ from, to }` (rename; you may target a built-in name to merge into it)
-- `DELETE /api/v1/categories/:name` — reassigns expenses to **Other** and removes the custom label
+   Edit `JWT_SECRET`, and confirm `MONGODB_URI` / `VITE_API_BASE_URL`.
 
-## Environment Files
+4. Run migrations (creates indexes / collections):
 
-### Root
+   ```bash
+   pnpm --filter @expense-tracker/backend migrate
+   ```
 
-Create `.env` at the repo root only if you want shared AI defaults:
+5. Build (optional sanity check):
 
-```env
-OPENAI_API_KEY=
-OPENAI_MODEL=gpt-4.1-mini
-```
+   ```bash
+   pnpm run build
+   ```
 
-### Backend
-
-Copy `packages/backend/.env.example` to `packages/backend/.env`
-
-```env
-PORT=4000
-MONGODB_URI=mongodb://127.0.0.1:27017
-MONGODB_DB_NAME=expense_tracker
-JWT_SECRET=replace-with-a-long-secret
-CLIENT_ORIGIN=http://localhost:3000
-OPENAI_API_KEY=
-OPENAI_MODEL=gpt-4.1-mini
-```
-
-Variable notes:
-
-- `PORT`: local Express port
-- `MONGODB_URI`: MongoDB connection string
-- `MONGODB_DB_NAME`: database name for local/offline development
-- `JWT_SECRET`: signing key for auth tokens
-- `CLIENT_ORIGIN`: allowed frontend origin for CORS
-- `OPENAI_API_KEY`: optional, enables live AI calls
-- `OPENAI_MODEL`: optional model override
-
-### Frontend
-
-Copy `packages/frontend/.env.example` to `packages/frontend/.env`
-
-```env
-VITE_API_BASE_URL=http://localhost:4000/api/v1
-```
-
-## Local Setup
-
-Prerequisites:
-
-- Node.js 20+
-- pnpm 10+
-- MongoDB running locally
-
-Run:
+## Run locally
 
 ```bash
-pnpm install
-pnpm run build
 pnpm run dev
 ```
 
-Expected local URLs:
-
 - Frontend: `http://localhost:3000`
-- Backend: `http://localhost:4000`
+- Backend: `http://localhost:4000` (or your `PORT`)
 
-## Core API
+## Quality checks
 
-- `POST /api/v1/auth/register`
-- `POST /api/v1/auth/login`
-- `GET /api/v1/expenses`
-- `POST /api/v1/expenses`
-- `PUT /api/v1/expenses/:expenseId`
-- `DELETE /api/v1/expenses/:expenseId`
-- `GET /api/v1/goals`
-- `POST /api/v1/goals`
-- `POST /api/v1/ai/parse-expense`
-
-All `/api/v1/*` routes except `/auth/*` require a JWT bearer token.
+```bash
+pnpm run typecheck    # tsc --noEmit in all packages
+pnpm run lint         # eslint per package
+pnpm run lint:fix     # eslint --fix on all src trees
+pnpm test             # backend unit tests; shared/frontend placeholders
+```
 
 ## Testing
 
-The backend includes unit tests for the goal forecast logic. This is the critical pure-business logic behind the dynamic ETA card.
-
-Run:
+Backend tests include goal forecast logic and natural-date parsing:
 
 ```bash
-pnpm test
+pnpm --filter @expense-tracker/backend test
 ```
 
-## What’s Implemented
+## Core API (authenticated except `/auth/*`)
 
-- JWT auth with register/login
-- expense create/list/edit/delete
-- category support with predefined or custom free-text categories
-- month and category spend summaries in the dashboard
-- smart expense entry with loading states and null-safe parsed fields
-- budget plan persistence
-- goal creation and dynamic ETA forecasting
-- graceful insufficient-data handling for new users
-- environment validation and centralized error handling
+- `POST /api/v1/auth/register`, `POST /api/v1/auth/login`
+- `GET/POST /api/v1/expenses`, `PUT/DELETE /api/v1/expenses/:id`
+- `GET/POST /api/v1/goals`
+- `GET /api/v1/categories`, `POST/PATCH/DELETE` for custom categories
+- `POST /api/v1/ai/parse-expense` — requires OpenAI config on the server
 
-## Deployment Path
+Send `Authorization: Bearer <token>` on protected routes.
 
-For the assessment review, this version optimizes for local speed and clear code. To move this into AWS later:
+## Product expectations
 
-1. keep the current service/repository modules unchanged
-2. replace the Express route adapter with Lambda handlers
-3. move MongoDB to Atlas if needed
-4. add IaC with CDK or Serverless Framework
+- **Responsive UI** — MUI breakpoints and touch-friendly targets.
+- **Loading & errors** — React Query mutations, alerts on failures, friendly AI error messages (no raw provider errors in UI).
+- **Forms** — shared Zod schemas; validation messages surfaced in dialogs.
+- **Logging** — `console.error` for config failures and unexpected AI paths (details server-side).
+
+## Deployment (outline)
+
+1. Host MongoDB (e.g. Atlas).
+2. Set production `packages/backend/.env` (or host env vars): `MONGODB_URI`, `JWT_SECRET`, `CLIENT_ORIGIN` to your frontend URL, `OPENAI_*` if using AI.
+3. Build frontend with `VITE_API_BASE_URL` pointing at your API.
+4. Run API behind HTTPS; keep CORS aligned with `CLIENT_ORIGIN`.
+5. Optional: port handlers to **AWS Lambda + API Gateway** — service/repository layers stay reusable.
 
 ## Troubleshooting
 
-- If the backend crashes on startup, check `packages/backend/.env` first. Required variables fail fast with a readable message.
-- If AI parsing does not use the live model, verify `OPENAI_API_KEY` is present. The app will still work with deterministic fallback behavior.
-- If the frontend cannot reach the API, confirm `VITE_API_BASE_URL` matches the backend port and that `CLIENT_ORIGIN` allows `http://localhost:3000`.
+| Issue | What to check |
+|-------|----------------|
+| Backend exits on start | `packages/backend/.env` — Zod error lists missing/invalid fields. |
+| CORS errors | `CLIENT_ORIGIN` must match the browser origin (scheme + host + port). |
+| Frontend “failed to fetch” | `VITE_API_BASE_URL` includes `/api/v1` and matches backend `PORT`. |
+| AI parse unavailable | `OPENAI_API_KEY` and `OPENAI_MODEL` set in **backend** `.env`; restart server. |
+| `@expense-tracker/shared` resolution | Use workspace `pnpm install`; shared exports TypeScript sources for dev. |
+
+## License
+
+Private / assessment — adjust as needed.

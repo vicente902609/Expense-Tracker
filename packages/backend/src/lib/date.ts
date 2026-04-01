@@ -4,12 +4,6 @@ const formatDate = (value: Date) => value.toISOString().slice(0, 10);
 
 const startOfUtcDay = (value: Date) => new Date(Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate()));
 
-const shiftDays = (value: Date, days: number) => {
-  const next = startOfUtcDay(value);
-  next.setUTCDate(next.getUTCDate() + days);
-  return next;
-};
-
 export const getIsoDate = (value = new Date()) => formatDate(startOfUtcDay(value));
 
 /**

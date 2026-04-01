@@ -41,49 +41,49 @@ const toJsonBody = (input: ParseExpensePrompt) => {
   ].join(" ");
 
   return {
-  model: env.OPENAI_MODEL,
-  input: [
-    {
-      role: "system",
-      content: [
-        {
-          type: "input_text",
-          text: `${categoryInstruction(input.categories)} ${weekdayExamples}`,
-        },
-      ],
-    },
-    {
-      role: "user",
-      content: [
-        {
-          type: "input_text",
-          text: JSON.stringify(input),
-        },
-      ],
-    },
-  ],
-  text: {
-    format: {
-      type: "json_schema",
-      name: "parsed_expense",
-      schema: {
-        type: "object",
-        additionalProperties: false,
-        properties: {
-          amount: { type: ["number", "null"] },
-          description: { type: ["string", "null"] },
-          category: { type: ["string", "null"] },
-          date: { type: ["string", "null"] },
-          confidence: { type: "number" },
-          notes: {
-            type: "array",
-            items: { type: "string" },
+    model: env.OPENAI_MODEL,
+    input: [
+      {
+        role: "system",
+        content: [
+          {
+            type: "input_text",
+            text: `${categoryInstruction(input.categories)} ${weekdayExamples}`,
           },
+        ],
+      },
+      {
+        role: "user",
+        content: [
+          {
+            type: "input_text",
+            text: JSON.stringify(input),
+          },
+        ],
+      },
+    ],
+    text: {
+      format: {
+        type: "json_schema",
+        name: "parsed_expense",
+        schema: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            amount: { type: ["number", "null"] },
+            description: { type: ["string", "null"] },
+            category: { type: ["string", "null"] },
+            date: { type: ["string", "null"] },
+            confidence: { type: "number" },
+            notes: {
+              type: "array",
+              items: { type: "string" },
+            },
+          },
+          required: ["amount", "description", "category", "date", "confidence", "notes"],
         },
-        required: ["amount", "description", "category", "date", "confidence", "notes"],
       },
     },
-  },
   };
 };
 
@@ -126,7 +126,7 @@ export const parseExpenseWithModel = async (input: ParseExpensePrompt): Promise<
 
   try {
     return JSON.parse(text) as ParsedExpense;
-  } catch (error) {
+  } catch {
     logOpenAiApiError("Failed to parse AI JSON output", 200, text);
     throw new AppError(USER_MESSAGE_AI_PARSE_FAILED, 502);
   }

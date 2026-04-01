@@ -5,6 +5,8 @@ import { addDays, differenceInDays, getIsoDate, toMonthKey } from "../../lib/dat
 type ForecastInputs = {
   goal: Pick<Goal, "targetAmount" | "targetDate" | "savedAmount" | "createdAt" | "targetExpense">;
   expenses: Expense[];
+  /** ISO calendar day (YYYY-MM-DD); defaults to today. Used by tests for deterministic output. */
+  asOfIsoDate?: string;
 };
 
 type ForecastResult = {
@@ -23,8 +25,8 @@ type ForecastResult = {
 
 const sum = (values: number[]) => values.reduce((total, value) => total + value, 0);
 
-const getCurrentMonthSpend = (expenses: Expense[]) => {
-  const monthKey = toMonthKey(getIsoDate());
+const getCurrentMonthSpend = (expenses: Expense[], todayIso: string) => {
+  const monthKey = toMonthKey(todayIso);
   return sum(expenses.filter((expense) => toMonthKey(expense.date) === monthKey).map((expense) => expense.amount));
 };
 
@@ -51,10 +53,10 @@ const getTopCategory = (expenses: Expense[]) => {
   return [...totals.entries()].sort((left, right) => right[1] - left[1])[0] ?? null;
 };
 
-export const computeGoalForecast = ({ goal, expenses }: ForecastInputs): ForecastResult => {
-  const currentMonthSpend = getCurrentMonthSpend(expenses);
+export const computeGoalForecast = ({ goal, expenses, asOfIsoDate }: ForecastInputs): ForecastResult => {
+  const todayIso = asOfIsoDate ?? getIsoDate();
+  const currentMonthSpend = getCurrentMonthSpend(expenses, todayIso);
   const monthlySavingsRate = goal.targetExpense - currentMonthSpend;
-  const todayIso = getIsoDate();
   const trackedMonths = getMonthRange(goal.createdAt, todayIso);
   const monthSpend = expenses.reduce<Record<string, number>>((acc, expense) => {
     const monthKey = toMonthKey(expense.date);

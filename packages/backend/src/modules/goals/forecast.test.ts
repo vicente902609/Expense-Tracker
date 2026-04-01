@@ -14,6 +14,7 @@ test("computeGoalForecast uses target expense even without expense history", () 
       targetExpense: 1000,
     },
     expenses: [],
+    asOfIsoDate: "2026-01-15",
   });
 
   assert.equal(result.status, "on_track");
@@ -65,6 +66,7 @@ test("computeGoalForecast marks a goal on track when savings pace is healthy", (
       targetExpense: 2000,
     },
     expenses,
+    asOfIsoDate: "2026-03-31",
   });
 
   assert.equal(result.status, "on_track");

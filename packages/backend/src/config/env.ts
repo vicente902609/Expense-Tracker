@@ -27,6 +27,7 @@ if (!parsedEnv.success) {
     .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
     .join("\n");
 
+  console.error("[config] Invalid backend environment variables:\n%s", message);
   throw new Error(`Invalid backend environment variables:\n${message}`);
 }
 
