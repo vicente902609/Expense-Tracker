@@ -314,9 +314,10 @@ export const categoriesResponseSchema = z.object({
 
 export type CategoriesResponse = z.infer<typeof categoriesResponseSchema>;
 
+/** POST /categories (new-backend): both name and hex color are required. */
 export const addCustomCategorySchema = z.object({
   name: customCategoryNameSchema,
-  color: categoryHexColorSchema.optional(),
+  color: categoryHexColorSchema,
 });
 
 export const updateCustomCategoryBodySchema = z

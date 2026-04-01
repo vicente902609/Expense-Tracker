@@ -1,5 +1,6 @@
 import { Router } from "express";
 
+import { sendCreated } from "../../lib/api-response.js";
 import { AppError } from "../../lib/errors.js";
 import { asyncHandler } from "../../lib/http.js";
 import { addCustomCategory, deleteCustomCategory, listCategories, updateCustomCategory } from "./service.js";
@@ -25,8 +26,8 @@ categoriesRouter.get(
 categoriesRouter.post(
   "/",
   asyncHandler(async (request, response) => {
-    const categories = await addCustomCategory(request.authUser!.id, request.body);
-    response.status(201).json(categories);
+    const created = await addCustomCategory(request.authUser!.id, request.body);
+    sendCreated(response, created);
   }),
 );
 

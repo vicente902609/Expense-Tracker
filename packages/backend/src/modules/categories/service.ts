@@ -34,9 +34,11 @@ export const listCategories = async (userId: string) => {
   };
 };
 
+/** POST /categories — creates one custom category; returns the created row (same shape as new-backend). */
 export const addCustomCategory = async (userId: string, payload: unknown) => {
   const parsed = addCustomCategorySchema.parse(payload);
   const name = normalizeName(parsed.name);
+  const color = parsed.color;
   const predefinedLower = await getPredefinedNameLowerSet();
 
   if (predefinedLower.has(name.toLowerCase())) {
@@ -53,12 +55,18 @@ export const addCustomCategory = async (userId: string, payload: unknown) => {
   const next: UserCustomCategoryDoc = {
     categoryId: randomUUID(),
     name,
+    color,
     createdAt: now,
-    ...(parsed.color ? { color: parsed.color } : {}),
   };
 
   await setUserCustomCategoryDocs(userId, [...docs, next]);
-  return listCategories(userId);
+
+  return {
+    categoryId: next.categoryId,
+    name: next.name,
+    color: next.color,
+    createdAt: next.createdAt,
+  };
 };
 
 export const updateCustomCategory = async (userId: string, categoryId: string, payload: unknown) => {

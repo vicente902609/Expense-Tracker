@@ -1,4 +1,4 @@
-import type { CategoriesListResponse } from "@expense-tracker/shared";
+import type { CategoriesListResponse, CustomCategoryApi } from "@expense-tracker/shared";
 
 import { apiRequest } from "@/api/client";
 
@@ -6,10 +6,11 @@ export type { CategoriesListResponse };
 
 export const listCategories = () => apiRequest<CategoriesListResponse>("/categories");
 
-export const addCustomCategory = (name: string, color?: string) =>
-  apiRequest<CategoriesListResponse>("/categories", {
+/** POST /categories — body `{ name, color }`; response is the created category (envelope unwrapped by client). */
+export const addCustomCategory = (name: string, color: string) =>
+  apiRequest<CustomCategoryApi>("/categories", {
     method: "POST",
-    body: color !== undefined ? { name, color } : { name },
+    body: { name, color },
   });
 
 export const updateCustomCategory = (categoryId: string, body: { name?: string; color?: string | null }) =>
