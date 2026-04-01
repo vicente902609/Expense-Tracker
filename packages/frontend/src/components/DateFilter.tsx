@@ -36,6 +36,18 @@ const defaultLabels: Required<DateFilterLabels> = {
   range: "Date range",
 };
 
+export type DateFilterPresetVisibility = {
+  today?: boolean;
+  week?: boolean;
+  month?: boolean;
+};
+
+const defaultPresetVisibility: Required<DateFilterPresetVisibility> = {
+  today: true,
+  week: true,
+  month: true,
+};
+
 type DateFilterProps = {
   kind: DateFilterKind;
   fromDate: string;
@@ -47,6 +59,8 @@ type DateFilterProps = {
   align?: "left" | "right";
   /** Controls default ranges for presets and the custom-range modal baseline. */
   scope?: DateFilterScope;
+  /** Hide preset chips (e.g. Reports only shows “Last 6 months”, “This year”, and custom range). */
+  presetVisibility?: DateFilterPresetVisibility;
 };
 
 export const DateFilter = ({
@@ -59,8 +73,10 @@ export const DateFilter = ({
   sectionLabel = "Date range",
   align = "left",
   scope = "expenses",
+  presetVisibility: presetVisibilityProp,
 }: DateFilterProps) => {
   const labels = { ...defaultLabels, ...labelsProp };
+  const presetVisibility = { ...defaultPresetVisibility, ...presetVisibilityProp };
   const [modalOpen, setModalOpen] = useState(false);
   const [draftFrom, setDraftFrom] = useState(fromDate);
   const [draftTo, setDraftTo] = useState(toDate);
@@ -98,45 +114,51 @@ export const DateFilter = ({
         <Typography sx={(theme) => ({ ...sectionLabelSx(theme), mb: 1.25, ...textAlign })}>{sectionLabel}</Typography>
         <Stack spacing={1.5} sx={{ alignItems: align === "right" ? { xs: "stretch", sm: "flex-end" } : "stretch" }}>
           <Stack direction="row" flexWrap="wrap" gap={1} useFlexGap sx={justify}>
-            <Chip
-              label={labels.today}
-              onClick={() => onSelectPreset("today")}
-              color={kind === "today" ? "primary" : "default"}
-              variant={kind === "today" ? "filled" : "outlined"}
-              sx={{
-                minHeight: 36,
-                fontWeight: 600,
-                borderColor: (theme) => alpha(theme.palette.common.white, 0.15),
-                bgcolor: kind === "today" ? undefined : alpha("#ffffff", 0.04),
-                "& .MuiChip-label": { px: 1.25 },
-              }}
-            />
-            <Chip
-              label={labels.week}
-              onClick={() => onSelectPreset("week")}
-              color={kind === "week" ? "primary" : "default"}
-              variant={kind === "week" ? "filled" : "outlined"}
-              sx={{
-                minHeight: 36,
-                fontWeight: 600,
-                borderColor: (theme) => alpha(theme.palette.common.white, 0.15),
-                bgcolor: kind === "week" ? undefined : alpha("#ffffff", 0.04),
-                "& .MuiChip-label": { px: 1.25 },
-              }}
-            />
-            <Chip
-              label={labels.month}
-              onClick={() => onSelectPreset("month")}
-              color={kind === "month" ? "primary" : "default"}
-              variant={kind === "month" ? "filled" : "outlined"}
-              sx={{
-                minHeight: 36,
-                fontWeight: 600,
-                borderColor: (theme) => alpha(theme.palette.common.white, 0.15),
-                bgcolor: kind === "month" ? undefined : alpha("#ffffff", 0.04),
-                "& .MuiChip-label": { px: 1.25 },
-              }}
-            />
+            {presetVisibility.today ? (
+              <Chip
+                label={labels.today}
+                onClick={() => onSelectPreset("today")}
+                color={kind === "today" ? "primary" : "default"}
+                variant={kind === "today" ? "filled" : "outlined"}
+                sx={{
+                  minHeight: 36,
+                  fontWeight: 600,
+                  borderColor: (theme) => alpha(theme.palette.common.white, 0.15),
+                  bgcolor: kind === "today" ? undefined : alpha("#ffffff", 0.04),
+                  "& .MuiChip-label": { px: 1.25 },
+                }}
+              />
+            ) : null}
+            {presetVisibility.week ? (
+              <Chip
+                label={labels.week}
+                onClick={() => onSelectPreset("week")}
+                color={kind === "week" ? "primary" : "default"}
+                variant={kind === "week" ? "filled" : "outlined"}
+                sx={{
+                  minHeight: 36,
+                  fontWeight: 600,
+                  borderColor: (theme) => alpha(theme.palette.common.white, 0.15),
+                  bgcolor: kind === "week" ? undefined : alpha("#ffffff", 0.04),
+                  "& .MuiChip-label": { px: 1.25 },
+                }}
+              />
+            ) : null}
+            {presetVisibility.month ? (
+              <Chip
+                label={labels.month}
+                onClick={() => onSelectPreset("month")}
+                color={kind === "month" ? "primary" : "default"}
+                variant={kind === "month" ? "filled" : "outlined"}
+                sx={{
+                  minHeight: 36,
+                  fontWeight: 600,
+                  borderColor: (theme) => alpha(theme.palette.common.white, 0.15),
+                  bgcolor: kind === "month" ? undefined : alpha("#ffffff", 0.04),
+                  "& .MuiChip-label": { px: 1.25 },
+                }}
+              />
+            ) : null}
             {kind === "range" ? (
               <Button
                 variant="outlined"

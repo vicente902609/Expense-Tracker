@@ -1,8 +1,14 @@
 import type { PublicUser } from "@expense-tracker/shared";
 
-const accessKey = "expense-tracker-access-token";
-const refreshKey = "expense-tracker-refresh-token";
-const userKey = "expense-tracker-user";
+export const AUTH_STORAGE_KEYS = {
+  access: "expense-tracker-access-token",
+  refresh: "expense-tracker-refresh-token",
+  user: "expense-tracker-user",
+} as const;
+
+const accessKey = AUTH_STORAGE_KEYS.access;
+const refreshKey = AUTH_STORAGE_KEYS.refresh;
+const userKey = AUTH_STORAGE_KEYS.user;
 /** Legacy single JWT from older clients; cleared on read */
 const legacyTokenKey = "expense-tracker-token";
 
@@ -32,9 +38,18 @@ function normalizeStoredUser(raw: unknown): PublicUser | null {
   return null;
 }
 
+/**
+ * Remove old single-JWT storage. If the user already has the newer access + refresh
+ * pair, keep `userKey` so refresh does not sign them out during migration.
+ */
 function clearLegacyTokenIfPresent() {
-  if (window.localStorage.getItem(legacyTokenKey)) {
-    window.localStorage.removeItem(legacyTokenKey);
+  if (!window.localStorage.getItem(legacyTokenKey)) {
+    return;
+  }
+  window.localStorage.removeItem(legacyTokenKey);
+  const hasNewSession =
+    Boolean(window.localStorage.getItem(accessKey)) && Boolean(window.localStorage.getItem(refreshKey));
+  if (!hasNewSession) {
     window.localStorage.removeItem(userKey);
   }
 }

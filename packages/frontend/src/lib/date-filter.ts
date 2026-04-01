@@ -18,28 +18,24 @@ export const mondayOfWeekLocal = (d: Date) => {
   return date;
 };
 
-const endOfMonthLocal = (d: Date) => new Date(d.getFullYear(), d.getMonth() + 1, 0);
-
 /**
- * Reports presets (see Reports UI chip labels):
- * - `today` → this calendar week’s weekdays only (Mon–Fri), daily buckets
- * - `week` → full current calendar month, weekly (Mon-start) buckets
- * - `month` → from first day of month 5 months ago through today, monthly buckets (6 month windows)
+ * Reports presets (see Reports UI):
+ * - `month` → last ~6 calendar months (first day of month five months ago through today)
+ * - `week` → **this calendar year** (Jan 1 through today) — label in UI is “This year”
+ * - `today` → unused when the “Today” chip is hidden; kept for typing compatibility
  */
 export const getReportsRangeForKind = (kind: Exclude<DateFilterKind, "range">): { from: string; to: string } => {
   const today = new Date();
   const todayIso = formatLocalIsoDate(today);
 
   if (kind === "today") {
-    const mon = mondayOfWeekLocal(today);
-    const fri = new Date(mon.getFullYear(), mon.getMonth(), mon.getDate() + 4);
-    return { from: formatLocalIsoDate(mon), to: formatLocalIsoDate(fri) };
+    const start = new Date(today.getFullYear(), today.getMonth() - 5, 1);
+    return { from: formatLocalIsoDate(start), to: todayIso };
   }
 
   if (kind === "week") {
-    const start = startOfMonthLocal(today);
-    const end = endOfMonthLocal(today);
-    return { from: formatLocalIsoDate(start), to: formatLocalIsoDate(end) };
+    const start = new Date(today.getFullYear(), 0, 1);
+    return { from: formatLocalIsoDate(start), to: todayIso };
   }
 
   const start = new Date(today.getFullYear(), today.getMonth() - 5, 1);

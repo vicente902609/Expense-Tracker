@@ -1,13 +1,11 @@
 import { useState } from "react";
-import type { CustomCategoryApi, Expense, PredefinedCategory } from "@expense-tracker/shared";
-import { useQuery } from "@tanstack/react-query";
+import type { CustomCategoryApi, PredefinedCategory } from "@expense-tracker/shared";
 import { alpha } from "@mui/material/styles";
 import {
   Alert,
   Box,
   Button,
   Chip,
-  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -17,22 +15,13 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { fetchAllExpenses } from "@/api/expenses";
 import { CategoryColorSwatch } from "@/components/CategoryColorSwatch";
 import { useCategories } from "@/hooks/use-categories";
 import { listRowInteractive, RADIUS_INNER, radiusInner, sectionLabelSx, surfaceCard } from "@/theme/ui";
 
-const getCategoryCount = (expenses: Expense[], categoryId: string) => expenses.filter((expense) => expense.categoryId === categoryId).length;
-
 const defaultGray = "#8e8e87";
 
 export const CategoriesView = () => {
-  const expensesQuery = useQuery({
-    queryKey: ["expenses", "all"],
-    queryFn: fetchAllExpenses,
-  });
-  const expenses = expensesQuery.data ?? [];
-
   const [draftCategory, setDraftCategory] = useState("");
   const [addColorHex, setAddColorHex] = useState(defaultGray);
   const [editingEntry, setEditingEntry] = useState<CustomCategoryApi | null>(null);
@@ -56,10 +45,7 @@ export const CategoriesView = () => {
     setEditColorHex(entry.color);
   };
 
-  const renderPredefinedRow = (row: PredefinedCategory) => {
-    const count = getCategoryCount(expenses, row.categoryId);
-
-    return (
+  const renderPredefinedRow = (row: PredefinedCategory) => (
       <Stack
         key={row.categoryId}
         direction={{ xs: "column", sm: "row" }}
@@ -80,9 +66,6 @@ export const CategoriesView = () => {
         </Stack>
 
         <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap justifyContent={{ xs: "flex-start", sm: "flex-end" }}>
-          <Typography variant="body2" color="text.secondary">
-            {count} expenses
-          </Typography>
           <Chip
             label="Default"
             size="small"
@@ -96,13 +79,9 @@ export const CategoriesView = () => {
           />
         </Stack>
       </Stack>
-    );
-  };
+  );
 
-  const renderCustomRow = (entry: CustomCategoryApi) => {
-    const count = getCategoryCount(expenses, entry.categoryId);
-
-    return (
+  const renderCustomRow = (entry: CustomCategoryApi) => (
       <Stack
         key={entry.categoryId}
         direction={{ xs: "column", sm: "row" }}
@@ -123,9 +102,6 @@ export const CategoriesView = () => {
         </Stack>
 
         <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap justifyContent={{ xs: "flex-start", sm: "flex-end" }}>
-          <Typography variant="body2" color="text.secondary">
-            {count} expenses
-          </Typography>
           <Chip
             label="Custom"
             size="small"
@@ -145,8 +121,7 @@ export const CategoriesView = () => {
           </Button>
         </Stack>
       </Stack>
-    );
-  };
+  );
 
   const nameColorAdornment = (hex: string, onChange: (value: string) => void) => (
     <InputAdornment position="start" sx={{ mr: 0.5 }}>
@@ -172,14 +147,6 @@ export const CategoriesView = () => {
     </InputAdornment>
   );
 
-  if (expensesQuery.isLoading) {
-    return (
-      <Box sx={{ display: "grid", placeItems: "center", py: 10 }}>
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   return (
     <Stack spacing={2.5} sx={{ px: { xs: 2, md: 3 }, py: { xs: 2, md: 3 }, maxWidth: 920, mx: "auto" }}>
       <Box>
@@ -188,7 +155,7 @@ export const CategoriesView = () => {
           Labels & rules
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-          Default categories are loaded from the server; add your own labels and colors below.
+          Use the built-in categories or create your own—each gets a color for charts and lists.
         </Typography>
       </Box>
 

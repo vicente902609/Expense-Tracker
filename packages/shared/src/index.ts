@@ -301,6 +301,38 @@ export const listExpensesResponseSchema = z.object({
 
 export type ListExpensesResponse = z.infer<typeof listExpensesResponseSchema>;
 
+/** GET /reports/monthly and GET /reports/by-category */
+export const reportsRangeQuerySchema = z.object({
+  startDate: isoDateSchema.optional(),
+  endDate: isoDateSchema.optional(),
+});
+
+export type ReportsRangeQuery = z.infer<typeof reportsRangeQuerySchema>;
+
+export const monthlyReportRowSchema = z.object({
+  month: z.string().regex(/^\d{4}-\d{2}$/u),
+  total: z.number(),
+  count: z.number().int().nonnegative(),
+});
+
+export const monthlyReportResponseSchema = z.object({
+  months: z.array(monthlyReportRowSchema),
+});
+
+export type MonthlyReportResponse = z.infer<typeof monthlyReportResponseSchema>;
+
+export const byCategoryReportRowSchema = z.object({
+  categoryId: z.string(),
+  total: z.number(),
+  count: z.number().int().nonnegative(),
+});
+
+export const byCategoryReportResponseSchema = z.object({
+  categories: z.array(byCategoryReportRowSchema),
+});
+
+export type ByCategoryReportResponse = z.infer<typeof byCategoryReportResponseSchema>;
+
 export const customCategoryNameSchema = z.string().trim().min(1).max(50);
 
 /** Hex color #RRGGBB for category chips and charts. */

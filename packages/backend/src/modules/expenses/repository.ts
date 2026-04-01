@@ -166,6 +166,18 @@ export const findAllExpensesForUser = async (userId: string) => {
   return documents.map(mapExpense);
 };
 
+/** All expenses in optional date bounds (for reports aggregation). */
+export const findExpensesInDateRangeForReports = async (
+  userId: string,
+  startDate?: string,
+  endDate?: string,
+): Promise<Expense[]> => {
+  const collection = await getExpensesCollection();
+  const query = buildBaseQuery(userId, { startDate, endDate, categoryId: undefined });
+  const documents = await collection.find(query).toArray();
+  return documents.map(mapExpense);
+};
+
 export const getExpenseById = async (userId: string, expenseId: string): Promise<Expense | null> => {
   const collection = await getExpensesCollection();
   const document = await collection.findOne({
