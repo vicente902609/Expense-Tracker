@@ -137,6 +137,66 @@ export const authPayloadSchema = z.object({
 
 export type AuthPayload = z.infer<typeof authPayloadSchema>;
 
+/** Aligns with serverless auth handlers (register). */
+export const registerBodySchema = z.object({
+  name: z.string().trim().min(2).max(80),
+  email: z.string().trim().email(),
+  password: z.string().min(8).max(128),
+});
+
+export type RegisterBody = z.infer<typeof registerBodySchema>;
+
+/** Aligns with serverless auth handlers (login). */
+export const loginBodySchema = z.object({
+  email: z.string().trim().email(),
+  password: z.string().min(1),
+});
+
+export type LoginBody = z.infer<typeof loginBodySchema>;
+
+/** API user shape (matches serverless auth responses; use `userId` not `id`). */
+export const publicUserSchema = z.object({
+  userId: z.string(),
+  email: z.string().email(),
+  name: z.string(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+
+export type PublicUser = z.infer<typeof publicUserSchema>;
+
+export const authTokensSchema = z.object({
+  accessToken: z.string(),
+  refreshToken: z.string(),
+});
+
+export type AuthTokens = z.infer<typeof authTokensSchema>;
+
+export const authSessionDataSchema = z.object({
+  user: publicUserSchema,
+  tokens: authTokensSchema,
+});
+
+export type AuthSessionData = z.infer<typeof authSessionDataSchema>;
+
+export const refreshTokensDataSchema = z.object({
+  tokens: authTokensSchema,
+});
+
+export type RefreshTokensData = z.infer<typeof refreshTokensDataSchema>;
+
+export const refreshRequestSchema = z.object({
+  refreshToken: z.string().min(1),
+});
+
+export type RefreshRequest = z.infer<typeof refreshRequestSchema>;
+
+export const logoutRequestSchema = z.object({
+  refreshToken: z.string().min(1),
+});
+
+export type LogoutRequest = z.infer<typeof logoutRequestSchema>;
+
 export const userSchema = z.object({
   id: z.string(),
   email: z.string().email(),
@@ -235,6 +295,7 @@ export const parsedExpenseSchema = z.object({
 export type ParseExpenseRequest = z.infer<typeof parseExpenseRequestSchema>;
 export type ParsedExpense = z.infer<typeof parsedExpenseSchema>;
 
+/** @deprecated Legacy single JWT response; prefer AuthSessionData + API envelope. */
 export const authResponseSchema = z.object({
   token: z.string(),
   user: userSchema,

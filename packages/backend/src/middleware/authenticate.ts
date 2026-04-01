@@ -1,13 +1,8 @@
 import type { NextFunction, Request, Response } from "express";
-import jwt from "jsonwebtoken";
 
-import { env } from "../config/env.js";
+import { verifyAccessToken } from "../lib/jwt.js";
 import { AppError } from "../lib/errors.js";
 import { getUserById } from "../modules/users/repository.js";
-
-type JwtPayload = {
-  sub: string;
-};
 
 export const authenticate = async (request: Request, _response: Response, next: NextFunction) => {
   try {
@@ -18,7 +13,13 @@ export const authenticate = async (request: Request, _response: Response, next: 
       throw new AppError("Authentication required", 401);
     }
 
-    const payload = jwt.verify(token, env.JWT_SECRET) as JwtPayload;
+    let payload: { sub: string };
+    try {
+      payload = verifyAccessToken(token);
+    } catch {
+      throw new AppError("Invalid or expired token", 401);
+    }
+
     const user = await getUserById(payload.sub);
 
     if (!user) {

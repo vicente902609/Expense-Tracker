@@ -16,6 +16,8 @@ const envSchema = z.object({
   MONGODB_DB_NAME: z.string().min(1, "MONGODB_DB_NAME is required"),
   JWT_SECRET: z.string().min(16, "JWT_SECRET must be at least 16 characters"),
   CLIENT_ORIGIN: z.string().url().default("http://localhost:3000"),
+  /** Refresh token signing (aligns with serverless auth). */
+  REFRESH_TOKEN_SECRET: z.string().min(16, "REFRESH_TOKEN_SECRET must be at least 16 characters"),
   OPENAI_API_KEY: z.string().optional(),
   OPENAI_MODEL: z.string().default("gpt-4.1-mini"),
 });

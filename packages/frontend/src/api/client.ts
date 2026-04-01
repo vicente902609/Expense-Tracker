@@ -6,8 +6,91 @@ type RequestOptions = {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 };
 
-export const apiRequest = async <T>(path: string, options: RequestOptions = {}) => {
-  const token = authStorage.getToken();
+type ApiEnvelope = {
+  success: boolean;
+  data?: unknown;
+  message?: string;
+  errors?: Record<string, string[] | undefined>;
+};
+
+function unwrapData<T>(json: unknown): T {
+  if (json && typeof json === "object" && "success" in json) {
+    const e = json as ApiEnvelope;
+    if (e.success === true && "data" in e) {
+      return e.data as T;
+    }
+  }
+  return json as T;
+}
+
+function throwFromFailedResponse(json: unknown): never {
+  if (json && typeof json === "object" && "success" in json) {
+    const e = json as ApiEnvelope;
+    if (e.success === false) {
+      if (e.errors && typeof e.errors === "object") {
+        const flat = Object.values(e.errors)
+          .flat()
+          .filter((v): v is string => Boolean(v));
+        if (flat.length) {
+          throw new Error(flat[0]);
+        }
+      }
+      if (e.message) {
+        throw new Error(e.message);
+      }
+    }
+  }
+  if (json && typeof json === "object" && "message" in json) {
+    const m = (json as { message?: unknown }).message;
+    if (typeof m === "string") {
+      throw new Error(m);
+    }
+  }
+  throw new Error("Request failed");
+}
+
+const isPublicAuthPath = (path: string) => {
+  const p = path.split("?")[0] ?? path;
+  return (
+    p.endsWith("/auth/login") || p.endsWith("/auth/register") || p.endsWith("/auth/refresh")
+  );
+};
+
+async function postRefresh(): Promise<boolean> {
+  const refreshToken = authStorage.getRefreshToken();
+  if (!refreshToken) {
+    return false;
+  }
+
+  const response = await fetch(`${env.apiBaseUrl}/auth/refresh`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ refreshToken }),
+  });
+
+  const json = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    authStorage.clearSession();
+    return false;
+  }
+
+  try {
+    const data = unwrapData<{ tokens: { accessToken: string; refreshToken: string } }>(json);
+    if (data?.tokens?.accessToken && data?.tokens?.refreshToken) {
+      authStorage.setTokens(data.tokens.accessToken, data.tokens.refreshToken);
+      return true;
+    }
+  } catch {
+    // unwrap failed
+  }
+
+  authStorage.clearSession();
+  return false;
+}
+
+export const apiRequest = async <T>(path: string, options: RequestOptions = {}, retried = false): Promise<T> => {
+  const token = authStorage.getAccessToken();
   const response = await fetch(`${env.apiBaseUrl}${path}`, {
     method: options.method ?? "GET",
     headers: {
@@ -17,14 +100,23 @@ export const apiRequest = async <T>(path: string, options: RequestOptions = {}) 
     body: options.body ? JSON.stringify(options.body) : undefined,
   });
 
-  if (!response.ok) {
-    const errorBody = (await response.json().catch(() => null)) as { message?: string } | null;
-    throw new Error(errorBody?.message ?? "Request failed");
-  }
-
   if (response.status === 204) {
     return undefined as T;
   }
 
-  return (await response.json()) as T;
+  const json = await response.json().catch(() => null);
+
+  if (response.status === 401 && !retried && !isPublicAuthPath(path) && authStorage.getRefreshToken()) {
+    const refreshed = await postRefresh();
+    if (refreshed) {
+      return apiRequest<T>(path, options, true);
+    }
+    throw new Error("Session expired. Please sign in again.");
+  }
+
+  if (!response.ok) {
+    throwFromFailedResponse(json);
+  }
+
+  return unwrapData<T>(json);
 };

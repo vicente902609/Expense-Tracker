@@ -23,7 +23,7 @@ import { GoalSetupDialog } from "@/features/goals/GoalSetupDialog";
 import { ReportsView } from "@/features/reports/ReportsView";
 
 type TrackerShellProps = {
-  onLogout: () => void;
+  onLogout: () => void | Promise<void>;
 };
 
 type TabValue = "home" | "expenses" | "reports" | "categories";
