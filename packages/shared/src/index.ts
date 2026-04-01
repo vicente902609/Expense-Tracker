@@ -242,31 +242,64 @@ export const userSchema = z.object({
 
 export type User = z.infer<typeof userSchema>;
 
-export const expenseInputSchema = z.object({
+/** Expense row returned by GET/POST/PUT (new-backend shape). */
+export const expenseApiSchema = z.object({
+  expenseId: z.string(),
   amount: z.number().positive(),
-  description: z.string().trim().min(1).max(120),
-  category: expenseCategorySchema,
+  description: z.string().max(500).optional(),
+  categoryId: z.string().min(1),
   date: isoDateSchema,
-  aiParsed: z.boolean().default(false),
-});
-
-export const expenseSchema = expenseInputSchema.extend({
-  id: z.string(),
-  userId: z.string(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
 
-export type ExpenseInput = z.infer<typeof expenseInputSchema>;
-export type Expense = z.infer<typeof expenseSchema>;
+export type Expense = z.infer<typeof expenseApiSchema>;
 
-export const expenseFiltersSchema = z.object({
-  category: z.string().trim().min(1).optional(),
-  from: isoDateSchema.optional(),
-  to: isoDateSchema.optional(),
+/** POST /expenses */
+export const createExpenseBodySchema = z.object({
+  amount: z.number().positive(),
+  description: z.string().max(500).optional(),
+  categoryId: z.string().min(1),
+  date: isoDateSchema,
 });
 
-export type ExpenseFilters = z.infer<typeof expenseFiltersSchema>;
+export type CreateExpenseBody = z.infer<typeof createExpenseBodySchema>;
+
+/** PUT /expenses/:expenseId — at least one field (new-backend). */
+export const updateExpenseBodySchema = z
+  .object({
+    amount: z.number().positive().optional(),
+    description: z.string().max(500).optional(),
+    categoryId: z.string().min(1).optional(),
+    date: isoDateSchema.optional(),
+  })
+  .refine((data) => Object.keys(data).length > 0, {
+    message: "At least one field must be provided",
+  });
+
+export type UpdateExpenseBody = z.infer<typeof updateExpenseBodySchema>;
+
+/** GET /expenses query (new-backend). */
+export const listExpensesQuerySchema = z.object({
+  startDate: isoDateSchema.optional(),
+  endDate: isoDateSchema.optional(),
+  categoryId: z.string().optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional().default(50),
+  cursor: z.string().optional(),
+});
+
+export type ListExpensesQuery = z.infer<typeof listExpensesQuerySchema>;
+
+export const listExpensesResponseSchema = z.object({
+  expenses: z.array(expenseApiSchema),
+  nextCursor: z.string().optional(),
+  /** Row count matching the same filters as this request (ignores limit/cursor). */
+  totalCount: z.number().int().nonnegative(),
+  /** Sum of `amount` for all rows matching the same filters. */
+  totalAmount: z.number().nonnegative(),
+});
+
+export type ListExpensesResponse = z.infer<typeof listExpensesResponseSchema>;
 
 export const customCategoryNameSchema = z.string().trim().min(1).max(50);
 

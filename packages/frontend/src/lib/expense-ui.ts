@@ -3,27 +3,48 @@ import { expenseCategoryValues, type Expense, type Goal } from "@expense-tracker
 export const predefinedCategories = expenseCategoryValues;
 
 export type CategoryPaletteEntry = {
+  categoryId: string;
   name: string;
   color: string;
 };
 
+/** MUI `TextField` props for currency amounts: numeric input, min 0, decimal step. */
+export const amountTextFieldProps = {
+  type: "number" as const,
+  inputProps: { min: 0, step: 0.01 },
+};
+
 const fallbackCategoryColor = "#8e8e87";
 
-/** Merge API predefined + custom rows for swatches and charts (both carry `name` + `color`). */
+/** Merge API predefined + custom rows for swatches and charts (`categoryId` + `name` + `color`). */
 export const buildCategoryPalette = (
-  predefined: readonly { name: string; color: string }[],
-  custom: readonly { name: string; color: string }[],
+  predefined: readonly { categoryId: string; name: string; color: string }[],
+  custom: readonly { categoryId: string; name: string; color: string }[],
 ): CategoryPaletteEntry[] => [
-  ...predefined.map((row) => ({ name: row.name, color: row.color })),
-  ...custom.map((row) => ({ name: row.name, color: row.color })),
+  ...predefined.map((row) => ({ categoryId: row.categoryId, name: row.name, color: row.color })),
+  ...custom.map((row) => ({ categoryId: row.categoryId, name: row.name, color: row.color })),
 ];
 
 /**
  * Resolve a dot/chip color from the palette built from `GET /categories` (predefined + custom).
  */
-export const getCategoryColor = (category: string, palette?: readonly CategoryPaletteEntry[]) => {
-  const hit = palette?.find((entry) => entry.name === category);
+export const getCategoryColor = (categoryId: string, palette?: readonly CategoryPaletteEntry[]) => {
+  const hit = palette?.find((entry) => entry.categoryId === categoryId);
   return hit?.color ?? fallbackCategoryColor;
+};
+
+export const getCategoryLabel = (categoryId: string, palette?: readonly CategoryPaletteEntry[]) => {
+  const hit = palette?.find((entry) => entry.categoryId === categoryId);
+  return hit?.name ?? categoryId;
+};
+
+export const resolveCategoryIdFromName = (name: string, palette: readonly CategoryPaletteEntry[]) => {
+  const trimmed = name.trim();
+  if (!trimmed) {
+    return "";
+  }
+  const hit = palette.find((entry) => entry.name.toLowerCase() === trimmed.toLowerCase());
+  return hit?.categoryId ?? "";
 };
 
 const currencyFormatter = new Intl.NumberFormat("en-US", {
@@ -328,9 +349,10 @@ export const getWeeklySeriesForRange = (expenses: Expense[], fromIso: string, to
   return out;
 };
 
-export const getCategoryTotals = (expenses: Expense[]) => {
+export const getCategoryTotals = (expenses: Expense[], categoryLabel: (categoryId: string) => string) => {
   const totals = expenses.reduce<Record<string, number>>((result, expense) => {
-    result[expense.category] = (result[expense.category] ?? 0) + expense.amount;
+    const label = categoryLabel(expense.categoryId);
+    result[label] = (result[label] ?? 0) + expense.amount;
     return result;
   }, {});
 

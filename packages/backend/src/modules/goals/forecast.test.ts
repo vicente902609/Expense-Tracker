@@ -5,6 +5,9 @@ import type { Expense } from "@expense-tracker/shared";
 
 import { computeGoalForecast } from "./forecast.js";
 
+const FOOD = "a1000000-0000-4000-8000-000000000001";
+const TRANSPORT = "a1000000-0000-4000-8000-000000000002";
+
 test("computeGoalForecast uses target expense even without expense history", () => {
   const result = computeGoalForecast({
     goal: {
@@ -24,68 +27,56 @@ test("computeGoalForecast uses target expense even without expense history", () 
 test("computeGoalForecast marks a goal on track when savings pace is healthy", () => {
   const expenses: Expense[] = [
     {
-      id: "1",
-      userId: "user",
+      expenseId: "1",
       amount: 200,
       description: "Groceries",
-      category: "Food",
+      categoryId: FOOD,
       date: "2026-02-01",
-      aiParsed: false,
       createdAt: "2026-02-01T00:00:00.000Z",
       updatedAt: "2026-02-01T00:00:00.000Z",
     },
     {
-      id: "2",
-      userId: "user",
+      expenseId: "2",
       amount: 150,
       description: "Gas",
-      category: "Transport",
+      categoryId: TRANSPORT,
       date: "2026-02-07",
-      aiParsed: false,
       createdAt: "2026-02-07T00:00:00.000Z",
       updatedAt: "2026-02-07T00:00:00.000Z",
     },
     {
-      id: "3",
-      userId: "user",
+      expenseId: "3",
       amount: 120,
       description: "Dinner",
-      category: "Food",
+      categoryId: FOOD,
       date: "2026-02-11",
-      aiParsed: false,
       createdAt: "2026-02-11T00:00:00.000Z",
       updatedAt: "2026-02-11T00:00:00.000Z",
     },
     {
-      id: "4",
-      userId: "user",
+      expenseId: "4",
       amount: 200,
       description: "Groceries",
-      category: "Food",
+      categoryId: FOOD,
       date: "2026-03-01",
-      aiParsed: false,
       createdAt: "2026-03-01T00:00:00.000Z",
       updatedAt: "2026-03-01T00:00:00.000Z",
     },
     {
-      id: "5",
-      userId: "user",
+      expenseId: "5",
       amount: 150,
       description: "Gas",
-      category: "Transport",
+      categoryId: TRANSPORT,
       date: "2026-03-07",
-      aiParsed: false,
       createdAt: "2026-03-07T00:00:00.000Z",
       updatedAt: "2026-03-07T00:00:00.000Z",
     },
     {
-      id: "6",
-      userId: "user",
+      expenseId: "6",
       amount: 120,
       description: "Dinner",
-      category: "Food",
+      categoryId: FOOD,
       date: "2026-03-11",
-      aiParsed: false,
       createdAt: "2026-03-11T00:00:00.000Z",
       updatedAt: "2026-03-11T00:00:00.000Z",
     },

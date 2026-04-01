@@ -4,30 +4,34 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { parseExpenseText } from "@/api/ai";
 import { createExpense, deleteExpense, updateExpense } from "@/api/expenses";
-import { formatLocalIsoDate } from "@/lib/expense-ui";
+import { type CategoryPaletteEntry, formatLocalIsoDate, resolveCategoryIdFromName } from "@/lib/expense-ui";
 
 export type ExpenseFormState = {
   amount: string;
   date: string;
   description: string;
-  category: string;
+  categoryId: string;
 };
 
 const createEmptyForm = (): ExpenseFormState => ({
   amount: "",
   date: formatLocalIsoDate(new Date()),
   description: "",
-  category: "",
+  categoryId: "",
 });
 
 const expenseToForm = (expense: Expense): ExpenseFormState => ({
   amount: expense.amount.toString(),
   date: expense.date,
-  description: expense.description,
-  category: expense.category,
+  description: expense.description ?? "",
+  categoryId: expense.categoryId,
 });
 
-export const useExpenseEditor = (expense: Expense | null | undefined, onClose: () => void) => {
+export const useExpenseEditor = (
+  expense: Expense | null | undefined,
+  categoryPalette: readonly CategoryPaletteEntry[],
+  onClose: () => void,
+) => {
   const queryClient = useQueryClient();
   const [smartText, setSmartText] = useState("");
   const [form, setForm] = useState<ExpenseFormState>(() => (expense ? expenseToForm(expense) : createEmptyForm()));
@@ -42,26 +46,35 @@ export const useExpenseEditor = (expense: Expense | null | undefined, onClose: (
   const parseMutation = useMutation({
     mutationFn: () => parseExpenseText(smartText),
     onSuccess: (data) => {
+      const categoryName = data.category ?? "";
+      const categoryId = resolveCategoryIdFromName(categoryName, categoryPalette);
       setForm({
         amount: data.amount?.toString() ?? "",
         date: data.date ?? formatLocalIsoDate(new Date()),
         description: data.description ?? "",
-        category: data.category ?? "",
+        categoryId,
       });
     },
   });
 
   const saveMutation = useMutation({
     mutationFn: () => {
-      const payload = {
-        amount: Number(form.amount),
+      const amount = Number(form.amount);
+      const description = form.description.trim();
+      if (expense) {
+        return updateExpense(expense.expenseId, {
+          amount,
+          date: form.date,
+          description: description.length ? description : undefined,
+          categoryId: form.categoryId,
+        });
+      }
+      return createExpense({
+        amount,
         date: form.date,
-        description: form.description,
-        category: form.category,
-        aiParsed: Boolean(smartText),
-      };
-
-      return expense ? updateExpense(expense.id, payload) : createExpense(payload);
+        description: description.length ? description : undefined,
+        categoryId: form.categoryId,
+      });
     },
     onSuccess: async () => {
       await invalidateData();
@@ -70,7 +83,7 @@ export const useExpenseEditor = (expense: Expense | null | undefined, onClose: (
   });
 
   const deleteMutation = useMutation({
-    mutationFn: () => deleteExpense(expense!.id),
+    mutationFn: () => deleteExpense(expense!.expenseId),
     onSuccess: async () => {
       await invalidateData();
       onClose();

@@ -1,8 +1,15 @@
 import { Router } from "express";
 
+import { sendCreated, sendOk } from "../../lib/api-response.js";
 import { AppError } from "../../lib/errors.js";
 import { asyncHandler } from "../../lib/http.js";
-import { createUserExpense, deleteUserExpense, listUserExpenses, updateUserExpense } from "./service.js";
+import {
+  createUserExpense,
+  deleteUserExpense,
+  getUserExpense,
+  listUserExpenses,
+  updateUserExpense,
+} from "./service.js";
 
 export const expensesRouter = Router();
 
@@ -11,14 +18,14 @@ const getRouteParam = (value: string | string[] | undefined) => {
     throw new AppError("Invalid expense id", 400);
   }
 
-  return value;
+  return decodeURIComponent(value);
 };
 
 expensesRouter.get(
   "/",
   asyncHandler(async (request, response) => {
-    const expenses = await listUserExpenses(request.authUser!.id, request.query);
-    response.json(expenses);
+    const result = await listUserExpenses(request.authUser!.id, request.query);
+    sendOk(response, result);
   }),
 );
 
@@ -26,7 +33,15 @@ expensesRouter.post(
   "/",
   asyncHandler(async (request, response) => {
     const expense = await createUserExpense(request.authUser!.id, request.body);
-    response.status(201).json(expense);
+    sendCreated(response, expense);
+  }),
+);
+
+expensesRouter.get(
+  "/:expenseId",
+  asyncHandler(async (request, response) => {
+    const expense = await getUserExpense(request.authUser!.id, getRouteParam(request.params.expenseId));
+    sendOk(response, expense);
   }),
 );
 
@@ -34,14 +49,14 @@ expensesRouter.put(
   "/:expenseId",
   asyncHandler(async (request, response) => {
     const expense = await updateUserExpense(request.authUser!.id, getRouteParam(request.params.expenseId), request.body);
-    response.json(expense);
+    sendOk(response, expense);
   }),
 );
 
 expensesRouter.delete(
   "/:expenseId",
   asyncHandler(async (request, response) => {
-    await deleteUserExpense(request.authUser!.id, getRouteParam(request.params.expenseId));
-    response.status(204).send();
+    const result = await deleteUserExpense(request.authUser!.id, getRouteParam(request.params.expenseId));
+    sendOk(response, result);
   }),
 );

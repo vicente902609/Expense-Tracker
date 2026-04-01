@@ -3,7 +3,8 @@ import { addCustomCategorySchema, putCustomCategoryBodySchema } from "@expense-t
 import { randomUUID } from "node:crypto";
 
 import { AppError } from "../../lib/errors.js";
-import { recategorizeExpenses } from "../expenses/repository.js";
+import { PREDEFINED_CATEGORY_SEED } from "./predefined-seed.js";
+import { recategorizeExpenseCategoryIds } from "../expenses/repository.js";
 import { recalculateGoalForecasts } from "../goals/service.js";
 import { getUserCustomCategoryDocs, setUserCustomCategoryDocs, type UserCustomCategoryDoc } from "../users/repository.js";
 import {
@@ -12,6 +13,8 @@ import {
 } from "./predefined-categories.repository.js";
 
 const DEFAULT_CUSTOM_COLOR = "#8e8e87";
+
+const OTHER_CATEGORY_ID = PREDEFINED_CATEGORY_SEED.find((row) => row.name === "Other")!.categoryId;
 
 const normalizeName = (value: string) => value.trim();
 
@@ -90,7 +93,7 @@ export const updateCustomCategory = async (
   const predefinedMatch = predefinedRows.find((row) => row.name.toLowerCase() === nextName.toLowerCase());
 
   if (predefinedMatch) {
-    await recategorizeExpenses(userId, current.name, predefinedMatch.name);
+    await recategorizeExpenseCategoryIds(userId, current.categoryId, predefinedMatch.categoryId);
     const filtered = docs.filter((_, i) => i !== index);
     await setUserCustomCategoryDocs(userId, filtered);
     await recalculateGoalForecasts(userId);
@@ -104,10 +107,6 @@ export const updateCustomCategory = async (
 
   if (docs.some((entry, i) => i !== index && entry.name.toLowerCase() === nextName.toLowerCase())) {
     throw new AppError("You already have a category with this name.", 409);
-  }
-
-  if (nextName !== current.name) {
-    await recategorizeExpenses(userId, current.name, nextName);
   }
 
   const updated: UserCustomCategoryDoc = {
@@ -136,7 +135,7 @@ export const deleteCustomCategory = async (userId: string, categoryId: string) =
     throw new AppError("Unknown custom category.", 404);
   }
 
-  await recategorizeExpenses(userId, found.name, "Other");
+  await recategorizeExpenseCategoryIds(userId, found.categoryId, OTHER_CATEGORY_ID);
   await setUserCustomCategoryDocs(
     userId,
     docs.filter((entry) => entry.categoryId !== categoryId),

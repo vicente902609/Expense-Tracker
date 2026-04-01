@@ -16,7 +16,7 @@ type ForecastResult = {
     monthlySavingsRate: number;
     projectedEta: string | null;
     targetDate: string | null;
-    suggestedCategoryCut: string | null;
+    suggestedCategoryId: string | null;
     suggestedCutAmount: number;
     status: Goal["status"];
   };
@@ -74,7 +74,7 @@ const getTopCategory = (expenses: Expense[]) => {
   const totals = new Map<string, number>();
 
   for (const expense of expenses) {
-    totals.set(expense.category, (totals.get(expense.category) ?? 0) + expense.amount);
+    totals.set(expense.categoryId, (totals.get(expense.categoryId) ?? 0) + expense.amount);
   }
 
   return [...totals.entries()].sort((left, right) => right[1] - left[1])[0] ?? null;
@@ -115,7 +115,7 @@ export const computeGoalForecast = ({ goal, expenses, asOfIsoDate }: ForecastInp
         monthlySavingsRate,
         projectedEta: todayIso,
         targetDate: goal.targetDate ?? null,
-        suggestedCategoryCut: null,
+        suggestedCategoryId: null,
         suggestedCutAmount: 0,
         status: "achieved",
       },
@@ -137,7 +137,7 @@ export const computeGoalForecast = ({ goal, expenses, asOfIsoDate }: ForecastInp
         monthlySavingsRate,
         projectedEta: null,
         targetDate: goal.targetDate ?? null,
-        suggestedCategoryCut: getTopCategory(expenses)?.[0] ?? null,
+        suggestedCategoryId: getTopCategory(expenses)?.[0] ?? null,
         suggestedCutAmount: 100,
         status: "at_risk",
       },
@@ -166,7 +166,7 @@ export const computeGoalForecast = ({ goal, expenses, asOfIsoDate }: ForecastInp
       monthlySavingsRate,
       projectedEta,
       targetDate: goal.targetDate ?? null,
-      suggestedCategoryCut: topCategory?.[0] ?? null,
+      suggestedCategoryId: topCategory?.[0] ?? null,
       suggestedCutAmount,
       status: isOnTrack ? "on_track" : "at_risk",
     },
