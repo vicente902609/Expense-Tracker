@@ -10,7 +10,7 @@ export const authenticate = async (request: Request, _response: Response, next: 
     const token = authorization?.startsWith("Bearer ") ? authorization.slice(7) : null;
 
     if (!token) {
-      throw new AppError("Authentication required", 401);
+      throw new AppError("Missing authorization token", 401);
     }
 
     let payload: { sub: string };

@@ -27,11 +27,22 @@ export const createApp = () => {
     });
   });
 
+  /**
+   * Mount the same API twice so one `VITE_API_BASE_URL` works for:
+   * - Serverless (HTTP API): `https://...amazonaws.com/dev` → `/auth/login`, `/categories`, …
+   * - Legacy Express: `http://localhost:4000/api/v1` → `/api/v1/auth/login`, …
+   */
+  const mountProtectedApi = (base: string) => {
+    app.use(`${base}/expenses`, authenticate, expensesRouter);
+    app.use(`${base}/goals`, authenticate, goalsRouter);
+    app.use(`${base}/categories`, authenticate, categoriesRouter);
+    app.use(`${base}/ai`, authenticate, aiRouter);
+  };
+
   app.use("/api/v1/auth", authRouter);
-  app.use("/api/v1/expenses", authenticate, expensesRouter);
-  app.use("/api/v1/goals", authenticate, goalsRouter);
-  app.use("/api/v1/categories", authenticate, categoriesRouter);
-  app.use("/api/v1/ai", authenticate, aiRouter);
+  app.use("/auth", authRouter);
+  mountProtectedApi("/api/v1");
+  mountProtectedApi("");
 
   app.use(errorHandler);
 

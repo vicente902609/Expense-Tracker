@@ -1,7 +1,7 @@
 import type { Expense, Goal } from "@expense-tracker/shared";
 import { Stack, Typography } from "@mui/material";
 
-import { formatSpendVsPriorMonth, getCurrentMonthExpenses, getSpendInCalendarMonth } from "@/lib/expense-ui";
+import { type CategoryPaletteEntry, formatSpendVsPriorMonth, getCurrentMonthExpenses, getSpendInCalendarMonth } from "@/lib/expense-ui";
 import { sectionLabelSx } from "@/theme/ui";
 import { DashboardGoalCard } from "@/features/dashboard/components/DashboardGoalCard";
 import { MonthStatCards } from "@/features/dashboard/components/MonthStatCards";
@@ -9,6 +9,7 @@ import { RecentExpensesSection } from "@/features/dashboard/components/RecentExp
 import { SmartEntryCard } from "@/features/dashboard/components/SmartEntryCard";
 
 type DashboardViewProps = {
+  categoryPalette: readonly CategoryPaletteEntry[];
   expenses: Expense[];
   goal?: Goal;
   onOpenGoalDialog: () => void;
@@ -19,6 +20,7 @@ type DashboardViewProps = {
 };
 
 export const DashboardView = ({
+  categoryPalette,
   expenses,
   goal,
   onOpenGoalDialog,
@@ -50,7 +52,12 @@ export const DashboardView = ({
 
         <Stack spacing={2.25}>
           <SmartEntryCard onOpenSmartEntry={onOpenSmartEntry} />
-          <RecentExpensesSection expenses={recentExpenses} onSelectExpense={onSelectExpense} onViewExpenses={onViewExpenses} />
+          <RecentExpensesSection
+            categoryPalette={categoryPalette}
+            expenses={recentExpenses}
+            onSelectExpense={onSelectExpense}
+            onViewExpenses={onViewExpenses}
+          />
         </Stack>
       </Stack>
     </Stack>

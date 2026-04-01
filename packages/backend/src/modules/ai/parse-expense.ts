@@ -1,5 +1,5 @@
 import {
-  mergeExpenseCategoryAllowlist,
+  buildExpenseCategoryAllowlist,
   parseExpenseRequestSchema,
   parsedExpenseSchema,
   resolveParsedExpenseCategory,
@@ -7,15 +7,19 @@ import {
 
 import { env } from "../../config/env.js";
 import { AppError } from "../../lib/errors.js";
-import { listCustomCategories } from "../categories/service.js";
+import { listPredefinedCategoryDocuments } from "../categories/predefined-categories.repository.js";
+import { getUserCustomCategoryDocs } from "../users/repository.js";
 import { getCalendarDateInTimezone, parseNaturalDate } from "../../lib/date.js";
 import { USER_MESSAGE_AI_NOT_AVAILABLE, USER_MESSAGE_AI_PARSE_FAILED } from "./openai-errors.js";
 import { parseExpenseWithModel } from "./provider.js";
 
 export const parseExpenseText = async (payload: unknown, userId: string) => {
   const input = parseExpenseRequestSchema.parse(payload);
-  const custom = await listCustomCategories(userId);
-  const allowedCategories = mergeExpenseCategoryAllowlist(custom);
+  const [predefined, customDocs] = await Promise.all([listPredefinedCategoryDocuments(), getUserCustomCategoryDocs(userId)]);
+  const allowedCategories = buildExpenseCategoryAllowlist(
+    predefined.map((row) => row.name),
+    customDocs.map((row) => row.name),
+  );
   const referenceDate = input.referenceDate ?? getCalendarDateInTimezone(input.timezone);
   const hasModelConfigured = Boolean(env.OPENAI_API_KEY?.trim()) && Boolean(env.OPENAI_MODEL?.trim());
 

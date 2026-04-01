@@ -2,22 +2,29 @@ import { expenseCategoryValues, type Expense, type Goal } from "@expense-tracker
 
 export const predefinedCategories = expenseCategoryValues;
 
-/** Distinct hues for charts / dots on dark UI (predefined categories from shared package). */
-const categoryColors: Record<string, string> = {
-  Food: "#2fb58d",
-  Transport: "#4f8ff7",
-  Housing: "#f0a060",
-  Utilities: "#f4b03e",
-  Entertainment: "#ef5a94",
-  Health: "#4ade80",
-  Shopping: "#e879f9",
-  Travel: "#38bdf8",
-  Education: "#818cf8",
-  Subscriptions: "#c084fc",
-  Other: "#8e8e87",
+export type CategoryPaletteEntry = {
+  name: string;
+  color: string;
 };
 
-export const getCategoryColor = (category: string) => categoryColors[category] ?? "#8e8e87";
+const fallbackCategoryColor = "#8e8e87";
+
+/** Merge API predefined + custom rows for swatches and charts (both carry `name` + `color`). */
+export const buildCategoryPalette = (
+  predefined: readonly { name: string; color: string }[],
+  custom: readonly { name: string; color: string }[],
+): CategoryPaletteEntry[] => [
+  ...predefined.map((row) => ({ name: row.name, color: row.color })),
+  ...custom.map((row) => ({ name: row.name, color: row.color })),
+];
+
+/**
+ * Resolve a dot/chip color from the palette built from `GET /categories` (predefined + custom).
+ */
+export const getCategoryColor = (category: string, palette?: readonly CategoryPaletteEntry[]) => {
+  const hit = palette?.find((entry) => entry.name === category);
+  return hit?.color ?? fallbackCategoryColor;
+};
 
 const currencyFormatter = new Intl.NumberFormat("en-US", {
   style: "currency",

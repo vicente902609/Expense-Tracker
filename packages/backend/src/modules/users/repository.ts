@@ -4,6 +4,13 @@ import { ObjectId } from "mongodb";
 import { getDatabase } from "../../lib/db.js";
 import { toObjectId } from "../../lib/object-id.js";
 
+export type UserCustomCategoryDoc = {
+  categoryId: string;
+  name: string;
+  color?: string;
+  createdAt: string;
+};
+
 type UserDocument = {
   _id?: ObjectId;
   email: string;
@@ -11,7 +18,10 @@ type UserDocument = {
   name: string;
   createdAt: string;
   updatedAt?: string;
+  customCategoryDocs?: UserCustomCategoryDoc[];
+  /** @deprecated Migrated to `customCategoryDocs`; optional for lazy migration */
   customCategories?: string[];
+  customCategoryColors?: Record<string, string>;
 };
 
 type NewUserDocument = Omit<UserDocument, "_id">;
@@ -56,7 +66,7 @@ export const createUser = async (input: { email: string; passwordHash: string; n
     name: input.name,
     createdAt: now,
     updatedAt: now,
-    customCategories: [],
+    customCategoryDocs: [],
   };
 
   const result = await collection.insertOne(document);
@@ -67,13 +77,56 @@ export const createUser = async (input: { email: string; passwordHash: string; n
   });
 };
 
-export const getUserCustomCategories = async (userId: string) => {
+const migrateLegacyUserCategoriesIfNeeded = async (userId: string): Promise<UserCustomCategoryDoc[]> => {
   const collection = await getUsersCollection();
-  const document = await collection.findOne({ _id: toObjectId(userId) }, { projection: { customCategories: 1 } });
-  return document?.customCategories ?? [];
+  const document = await collection.findOne({ _id: toObjectId(userId) });
+  if (!document) {
+    return [];
+  }
+
+  const legacy = document.customCategories as unknown;
+  if (!Array.isArray(legacy) || legacy.length === 0 || typeof legacy[0] !== "string") {
+    return [];
+  }
+
+  const colors = (document.customCategoryColors ?? {}) as Record<string, string>;
+  const now = new Date().toISOString();
+  const docs: UserCustomCategoryDoc[] = legacy.map((name) => ({
+    categoryId: new ObjectId().toHexString(),
+    name,
+    ...(typeof colors[name] === "string" ? { color: colors[name] } : {}),
+    createdAt: now,
+  }));
+
+  await collection.updateOne(
+    { _id: toObjectId(userId) },
+    { $set: { customCategoryDocs: docs }, $unset: { customCategories: "", customCategoryColors: "" } },
+  );
+
+  return docs;
 };
 
-export const setUserCustomCategories = async (userId: string, categories: string[]) => {
+export const getUserCustomCategoryDocs = async (userId: string): Promise<UserCustomCategoryDoc[]> => {
   const collection = await getUsersCollection();
-  await collection.updateOne({ _id: toObjectId(userId) }, { $set: { customCategories: categories } });
+  const document = await collection.findOne({ _id: toObjectId(userId) }, { projection: { customCategoryDocs: 1, customCategories: 1 } });
+  if (!document) {
+    return [];
+  }
+
+  const docs = document.customCategoryDocs;
+  if (Array.isArray(docs) && (docs.length === 0 || (typeof docs[0] === "object" && docs[0] !== null && "categoryId" in docs[0]))) {
+    return docs as UserCustomCategoryDoc[];
+  }
+
+  return migrateLegacyUserCategoriesIfNeeded(userId);
+};
+
+export const setUserCustomCategoryDocs = async (userId: string, docs: UserCustomCategoryDoc[]) => {
+  const collection = await getUsersCollection();
+  await collection.updateOne({ _id: toObjectId(userId) }, { $set: { customCategoryDocs: docs } });
+};
+
+export const getUserCustomCategories = async (userId: string) => {
+  const docs = await getUserCustomCategoryDocs(userId);
+  return docs.map((d) => d.name);
 };
