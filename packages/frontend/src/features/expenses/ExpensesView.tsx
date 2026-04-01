@@ -4,18 +4,19 @@ import { Box, Button, Chip, Stack, Typography } from "@mui/material";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 
 import { DateFilter } from "@/components/DateFilter";
-import { formatCurrency, formatMonthLabel, formatShortDate, getCategoryColor } from "@/lib/expense-ui";
+import { type CategoryPaletteEntry, formatCurrency, formatMonthLabel, formatShortDate, getCategoryColor } from "@/lib/expense-ui";
 import { listRowInteractive, sectionLabelSx, surfaceCard } from "@/theme/ui";
 import { useExpenseFilters } from "@/features/expenses/hooks/use-expense-filters";
 
 type ExpensesViewProps = {
   availableCategories: string[];
+  categoryPalette: readonly CategoryPaletteEntry[];
   expenses: Expense[];
   onAddExpense: () => void;
   onSelectExpense: (expense: Expense) => void;
 };
 
-export const ExpensesView = ({ availableCategories, expenses, onAddExpense, onSelectExpense }: ExpensesViewProps) => {
+export const ExpensesView = ({ availableCategories, categoryPalette, expenses, onAddExpense, onSelectExpense }: ExpensesViewProps) => {
   const { applyCustomRange, filteredExpenses, fromDate, kind, selectedCategory, selectPreset, setSelectedCategory, toDate, total } =
     useExpenseFilters(expenses);
 
@@ -68,6 +69,7 @@ export const ExpensesView = ({ availableCategories, expenses, onAddExpense, onSe
         >
           {["All", ...availableCategories].map((category) => {
             const selected = selectedCategory === category;
+            const accent = category === "All" ? undefined : getCategoryColor(category, categoryPalette);
             return (
               <Chip
                 key={category}
@@ -81,6 +83,8 @@ export const ExpensesView = ({ availableCategories, expenses, onAddExpense, onSe
                   fontWeight: 600,
                   borderColor: (theme) => alpha(theme.palette.common.white, 0.15),
                   bgcolor: selected ? undefined : alpha("#ffffff", 0.04),
+                  borderLeft: accent ? `3px solid ${accent}` : undefined,
+                  pl: accent ? 1.25 : undefined,
                   "& .MuiChip-label": { px: 1.5 },
                 }}
               />
@@ -109,7 +113,7 @@ export const ExpensesView = ({ availableCategories, expenses, onAddExpense, onSe
               })}
             >
               <Stack direction="row" spacing={1.25} alignItems="center" sx={{ minWidth: 0 }}>
-                <Box sx={{ width: 8, height: 8, borderRadius: "50%", flexShrink: 0, bgcolor: getCategoryColor(expense.category) }} />
+                <Box sx={{ width: 8, height: 8, borderRadius: "50%", flexShrink: 0, bgcolor: getCategoryColor(expense.category, categoryPalette) }} />
                 <Box sx={{ minWidth: 0 }}>
                   <Typography sx={{ fontWeight: 600 }} noWrap>
                     {expense.description}

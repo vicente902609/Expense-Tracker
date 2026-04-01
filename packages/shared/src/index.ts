@@ -93,6 +93,42 @@ export const mergeExpenseCategoryAllowlist = (custom: readonly string[]): string
 };
 
 /**
+ * Build ordered allowlist from DB-backed predefined names plus user custom names (deduped case-insensitively).
+ */
+export const buildExpenseCategoryAllowlist = (predefined: readonly string[], custom: readonly string[]): string[] => {
+  const seen = new Set<string>();
+  const out: string[] = [];
+
+  for (const raw of predefined) {
+    const c = raw.trim();
+    if (!c) {
+      continue;
+    }
+
+    const key = c.toLowerCase();
+    if (!seen.has(key)) {
+      seen.add(key);
+      out.push(c);
+    }
+  }
+
+  for (const raw of custom) {
+    const c = raw.trim();
+    if (!c) {
+      continue;
+    }
+
+    const key = c.toLowerCase();
+    if (!seen.has(key)) {
+      seen.add(key);
+      out.push(c);
+    }
+  }
+
+  return out;
+};
+
+/**
  * Map AI / fallback output to a single allowed category label (predefined or custom).
  * Prefer exact label match, then synonym rules for built-ins, then "Other".
  */
@@ -234,17 +270,73 @@ export type ExpenseFilters = z.infer<typeof expenseFiltersSchema>;
 
 export const customCategoryNameSchema = z.string().trim().min(1).max(50);
 
+/** Hex color #RRGGBB for category chips and charts. */
+export const categoryHexColorSchema = z
+  .string()
+  .regex(/^#([0-9a-fA-F]{6})$/u, "Expected #RRGGBB");
+
+/** @deprecated Legacy list-only shape; use `categoriesListResponseSchema`. */
+export const customCategoryEntrySchema = z.object({
+  name: z.string(),
+  color: categoryHexColorSchema.optional(),
+});
+
+export type CustomCategoryEntry = z.infer<typeof customCategoryEntrySchema>;
+
+export const predefinedCategorySchema = z.object({
+  categoryId: z.string(),
+  name: z.string(),
+  color: categoryHexColorSchema,
+});
+
+export type PredefinedCategory = z.infer<typeof predefinedCategorySchema>;
+
+export const customCategoryApiSchema = z.object({
+  categoryId: z.string(),
+  name: z.string(),
+  color: categoryHexColorSchema,
+  createdAt: z.string(),
+});
+
+export type CustomCategoryApi = z.infer<typeof customCategoryApiSchema>;
+
+export const categoriesListResponseSchema = z.object({
+  predefined: z.array(predefinedCategorySchema),
+  custom: z.array(customCategoryApiSchema),
+});
+
+export type CategoriesListResponse = z.infer<typeof categoriesListResponseSchema>;
+
+/** @deprecated Use `categoriesListResponseSchema` (GET /categories returns predefined + custom). */
+export const categoriesResponseSchema = z.object({
+  custom: z.array(customCategoryEntrySchema),
+});
+
+export type CategoriesResponse = z.infer<typeof categoriesResponseSchema>;
+
+/** POST /categories (new-backend): both name and hex color are required. */
 export const addCustomCategorySchema = z.object({
   name: customCategoryNameSchema,
+  color: categoryHexColorSchema,
 });
 
-export const renameCustomCategorySchema = z.object({
-  from: customCategoryNameSchema,
-  to: customCategoryNameSchema,
-});
+export const updateCustomCategoryBodySchema = z
+  .object({
+    name: customCategoryNameSchema.optional(),
+    color: z.union([categoryHexColorSchema, z.null()]).optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.name === undefined && data.color === undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Provide at least one of name or color.",
+      });
+    }
+  });
+
+export type UpdateCustomCategoryBody = z.infer<typeof updateCustomCategoryBodySchema>;
 
 export type AddCustomCategoryInput = z.infer<typeof addCustomCategorySchema>;
-export type RenameCustomCategoryInput = z.infer<typeof renameCustomCategorySchema>;
 
 export const goalInputSchema = z.object({
   name: z.string().trim().min(1).max(80),

@@ -17,18 +17,20 @@ import { alpha } from "@mui/material/styles";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import AutoAwesomeRoundedIcon from "@mui/icons-material/AutoAwesomeRounded";
 
-import { getCategoryIcon } from "@/lib/category-icons";
-import { getCategoryColor } from "@/lib/expense-ui";
+import { CategoryColorSwatch } from "@/components/CategoryColorSwatch";
+import { type CategoryPaletteEntry, getCategoryColor } from "@/lib/expense-ui";
 import { useExpenseEditor } from "@/features/expenses/hooks/use-expense-editor";
 
 type ExpenseEditorDialogProps = {
   availableCategories: string[];
+  /** Colors from GET /categories (predefined + custom). */
+  categoryPalette: readonly CategoryPaletteEntry[];
   expense?: Expense | null;
   open: boolean;
   onClose: () => void;
 };
 
-export const ExpenseEditorDialog = ({ availableCategories, expense, open, onClose }: ExpenseEditorDialogProps) => {
+export const ExpenseEditorDialog = ({ availableCategories, categoryPalette, expense, open, onClose }: ExpenseEditorDialogProps) => {
   const fullScreen = useMediaQuery((t) => t.breakpoints.down("sm"));
   const { deleteMutation, form, parseMutation, saveMutation, setForm, setSmartText, smartText } = useExpenseEditor(expense, onClose);
 
@@ -158,10 +160,9 @@ export const ExpenseEditorDialog = ({ availableCategories, expense, open, onClos
                       </Typography>
                     );
                   }
-                  const Icon = getCategoryIcon(value);
                   return (
                     <Stack direction="row" spacing={1.25} alignItems="center" component="span" sx={{ py: 0.25, minHeight: 24 }}>
-                      <Icon sx={{ fontSize: 20, color: getCategoryColor(value), flexShrink: 0 }} />
+                      <CategoryColorSwatch color={getCategoryColor(value, categoryPalette)} size={22} />
                       <Typography component="span" variant="body2" sx={{ lineHeight: 1.5 }}>
                         {value}
                       </Typography>
@@ -170,19 +171,16 @@ export const ExpenseEditorDialog = ({ availableCategories, expense, open, onClos
                 },
               }}
             >
-              {availableCategories.map((category) => {
-                const Icon = getCategoryIcon(category);
-                return (
-                  <MenuItem key={category} value={category}>
-                    <Stack direction="row" spacing={1.25} alignItems="center">
-                      <Icon sx={{ fontSize: 20, color: getCategoryColor(category), flexShrink: 0 }} />
-                      <Typography variant="body2" sx={{ lineHeight: 1.5 }}>
-                        {category}
-                      </Typography>
-                    </Stack>
-                  </MenuItem>
-                );
-              })}
+              {availableCategories.map((category) => (
+                <MenuItem key={category} value={category}>
+                  <Stack direction="row" spacing={1.25} alignItems="center">
+                    <CategoryColorSwatch color={getCategoryColor(category, categoryPalette)} size={22} />
+                    <Typography variant="body2" sx={{ lineHeight: 1.5 }}>
+                      {category}
+                    </Typography>
+                  </Stack>
+                </MenuItem>
+              ))}
             </TextField>
 
             <Button

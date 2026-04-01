@@ -3,16 +3,17 @@ import { alpha } from "@mui/material/styles";
 import { Box, Button, Stack, Typography } from "@mui/material";
 import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
 
-import { formatCurrency, formatShortDate, getCategoryColor } from "@/lib/expense-ui";
+import { type CategoryPaletteEntry, formatCurrency, formatShortDate, getCategoryColor } from "@/lib/expense-ui";
 import { listRowInteractive, sectionLabelSx, surfaceCard } from "@/theme/ui";
 
 type RecentExpensesSectionProps = {
+  categoryPalette: readonly CategoryPaletteEntry[];
   expenses: Expense[];
   onSelectExpense: (expense: Expense) => void;
   onViewExpenses: () => void;
 };
 
-export const RecentExpensesSection = ({ expenses, onSelectExpense, onViewExpenses }: RecentExpensesSectionProps) => (
+export const RecentExpensesSection = ({ categoryPalette, expenses, onSelectExpense, onViewExpenses }: RecentExpensesSectionProps) => (
   <>
     <Stack direction="row" justifyContent="space-between" alignItems="center">
       <Typography sx={(theme) => sectionLabelSx(theme)}>Recent</Typography>
@@ -46,7 +47,7 @@ export const RecentExpensesSection = ({ expenses, onSelectExpense, onViewExpense
             })}
           >
             <Stack direction="row" spacing={1.25} alignItems="center" sx={{ minWidth: 0 }}>
-              <Box sx={{ width: 8, height: 8, borderRadius: "50%", flexShrink: 0, bgcolor: getCategoryColor(expense.category) }} />
+              <Box sx={{ width: 8, height: 8, borderRadius: "50%", flexShrink: 0, bgcolor: getCategoryColor(expense.category, categoryPalette) }} />
               <Box sx={{ minWidth: 0 }}>
                 <Typography sx={{ fontWeight: 600 }} noWrap>
                   {expense.description}

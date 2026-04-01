@@ -1,47 +1,48 @@
 import { Router } from "express";
 
+import { sendCreated } from "../../lib/api-response.js";
 import { AppError } from "../../lib/errors.js";
 import { asyncHandler } from "../../lib/http.js";
-import { addCustomCategory, deleteCustomCategory, listCustomCategories, renameCustomCategory } from "./service.js";
+import { addCustomCategory, deleteCustomCategory, listCategories, updateCustomCategory } from "./service.js";
 
 export const categoriesRouter = Router();
 
-const getRouteParam = (value: string | string[] | undefined) => {
+const getCategoryIdParam = (value: string | string[] | undefined) => {
   if (typeof value !== "string" || !value) {
-    throw new AppError("Invalid category name", 400);
+    throw new AppError("Invalid category id", 400);
   }
 
-  return value;
+  return decodeURIComponent(value);
 };
 
 categoriesRouter.get(
   "/",
   asyncHandler(async (request, response) => {
-    const categories = await listCustomCategories(request.authUser!.id);
-    response.json({ custom: categories });
+    const categories = await listCategories(request.authUser!.id);
+    response.json(categories);
   }),
 );
 
 categoriesRouter.post(
   "/",
   asyncHandler(async (request, response) => {
-    const categories = await addCustomCategory(request.authUser!.id, request.body);
-    response.status(201).json({ custom: categories });
+    const created = await addCustomCategory(request.authUser!.id, request.body);
+    sendCreated(response, created);
   }),
 );
 
 categoriesRouter.patch(
-  "/",
+  "/:categoryId",
   asyncHandler(async (request, response) => {
-    const categories = await renameCustomCategory(request.authUser!.id, request.body);
-    response.json({ custom: categories });
+    const categories = await updateCustomCategory(request.authUser!.id, getCategoryIdParam(request.params.categoryId), request.body);
+    response.json(categories);
   }),
 );
 
 categoriesRouter.delete(
-  "/:name",
+  "/:categoryId",
   asyncHandler(async (request, response) => {
-    const categories = await deleteCustomCategory(request.authUser!.id, getRouteParam(request.params.name));
-    response.json({ custom: categories });
+    const categories = await deleteCustomCategory(request.authUser!.id, getCategoryIdParam(request.params.categoryId));
+    response.json(categories);
   }),
 );

@@ -1,100 +1,144 @@
-import { addCustomCategorySchema, expenseCategoryValues, renameCustomCategorySchema } from "@expense-tracker/shared";
+import { addCustomCategorySchema, updateCustomCategoryBodySchema } from "@expense-tracker/shared";
+import { randomUUID } from "node:crypto";
 
 import { AppError } from "../../lib/errors.js";
-import { recalculateGoalForecasts } from "../goals/service.js";
 import { recategorizeExpenses } from "../expenses/repository.js";
-import { getUserCustomCategories, setUserCustomCategories } from "../users/repository.js";
+import { recalculateGoalForecasts } from "../goals/service.js";
+import { getUserCustomCategoryDocs, setUserCustomCategoryDocs, type UserCustomCategoryDoc } from "../users/repository.js";
+import {
+  getPredefinedNameLowerSet,
+  listPredefinedCategoryDocuments,
+} from "./predefined-categories.repository.js";
 
-const predefinedLower = new Set(expenseCategoryValues.map((value) => value.toLowerCase()));
+const DEFAULT_CUSTOM_COLOR = "#8e8e87";
 
 const normalizeName = (value: string) => value.trim();
 
-const assertNotPredefined = (name: string) => {
+export const listCategories = async (userId: string) => {
+  const [predefinedDocs, customDocs] = await Promise.all([listPredefinedCategoryDocuments(), getUserCustomCategoryDocs(userId)]);
+
+  return {
+    predefined: predefinedDocs.map((row) => ({
+      categoryId: row.categoryId,
+      name: row.name,
+      color: row.color,
+    })),
+    custom: [...customDocs]
+      .sort((left, right) => left.name.localeCompare(right.name))
+      .map((row) => ({
+        categoryId: row.categoryId,
+        name: row.name,
+        color: row.color ?? DEFAULT_CUSTOM_COLOR,
+        createdAt: row.createdAt,
+      })),
+  };
+};
+
+/** POST /categories — creates one custom category; returns the created row (same shape as new-backend). */
+export const addCustomCategory = async (userId: string, payload: unknown) => {
+  const parsed = addCustomCategorySchema.parse(payload);
+  const name = normalizeName(parsed.name);
+  const color = parsed.color;
+  const predefinedLower = await getPredefinedNameLowerSet();
+
   if (predefinedLower.has(name.toLowerCase())) {
     throw new AppError("That name is reserved for a built-in category.", 400);
   }
+
+  const docs = await getUserCustomCategoryDocs(userId);
+
+  if (docs.some((entry) => entry.name.toLowerCase() === name.toLowerCase())) {
+    throw new AppError("You already have a category with this name.", 409);
+  }
+
+  const now = new Date().toISOString();
+  const next: UserCustomCategoryDoc = {
+    categoryId: randomUUID(),
+    name,
+    color,
+    createdAt: now,
+  };
+
+  await setUserCustomCategoryDocs(userId, [...docs, next]);
+
+  return {
+    categoryId: next.categoryId,
+    name: next.name,
+    color: next.color,
+    createdAt: next.createdAt,
+  };
 };
 
-const resolveCustomName = (list: string[], name: string) => {
-  const found = list.find((entry) => entry.toLowerCase() === name.toLowerCase());
+export const updateCustomCategory = async (userId: string, categoryId: string, payload: unknown) => {
+  const parsed = updateCustomCategoryBodySchema.parse(payload);
+  const docs = await getUserCustomCategoryDocs(userId);
+  const index = docs.findIndex((entry) => entry.categoryId === categoryId);
+
+  if (index === -1) {
+    throw new AppError("Unknown custom category.", 404);
+  }
+
+  const current = docs[index]!;
+  const nextName = parsed.name !== undefined ? normalizeName(parsed.name) : current.name;
+  const predefinedRows = await listPredefinedCategoryDocuments();
+  const predefinedMatch = predefinedRows.find((row) => row.name.toLowerCase() === nextName.toLowerCase());
+
+  if (predefinedMatch) {
+    await recategorizeExpenses(userId, current.name, predefinedMatch.name);
+    const filtered = docs.filter((_, i) => i !== index);
+    await setUserCustomCategoryDocs(userId, filtered);
+    await recalculateGoalForecasts(userId);
+    return listCategories(userId);
+  }
+
+  const predefinedLower = await getPredefinedNameLowerSet();
+  if (predefinedLower.has(nextName.toLowerCase())) {
+    throw new AppError("That name is reserved for a built-in category.", 400);
+  }
+
+  if (docs.some((entry, i) => i !== index && entry.name.toLowerCase() === nextName.toLowerCase())) {
+    throw new AppError("You already have a category with this name.", 409);
+  }
+
+  const nameChanging = parsed.name !== undefined && nextName !== current.name;
+  if (nameChanging) {
+    await recategorizeExpenses(userId, current.name, nextName);
+  }
+
+  const colorPatch = parsed.color;
+  const updated: UserCustomCategoryDoc = {
+    categoryId: current.categoryId,
+    name: nextName,
+    createdAt: current.createdAt,
+  };
+
+  if (colorPatch === null) {
+    /* omit color */
+  } else if (colorPatch !== undefined) {
+    updated.color = colorPatch;
+  } else if (current.color) {
+    updated.color = current.color;
+  }
+
+  const nextDocs = docs.map((entry, i) => (i === index ? updated : entry));
+  await setUserCustomCategoryDocs(userId, nextDocs);
+  await recalculateGoalForecasts(userId);
+  return listCategories(userId);
+};
+
+export const deleteCustomCategory = async (userId: string, categoryId: string) => {
+  const docs = await getUserCustomCategoryDocs(userId);
+  const found = docs.find((entry) => entry.categoryId === categoryId);
 
   if (!found) {
     throw new AppError("Unknown custom category.", 404);
   }
 
-  return found;
-};
-
-export const listCustomCategories = async (userId: string) => {
-  const custom = await getUserCustomCategories(userId);
-  return [...custom].sort((left, right) => left.localeCompare(right));
-};
-
-export const addCustomCategory = async (userId: string, payload: unknown) => {
-  const { name: rawName } = addCustomCategorySchema.parse(payload);
-  const name = normalizeName(rawName);
-  assertNotPredefined(name);
-
-  const list = await getUserCustomCategories(userId);
-
-  if (list.some((entry) => entry.toLowerCase() === name.toLowerCase())) {
-    throw new AppError("You already have a category with this name.", 409);
-  }
-
-  await setUserCustomCategories(userId, [...list, name]);
-  return listCustomCategories(userId);
-};
-
-export const renameCustomCategory = async (userId: string, payload: unknown) => {
-  const { from: rawFrom, to: rawTo } = renameCustomCategorySchema.parse(payload);
-  const from = normalizeName(rawFrom);
-  const to = normalizeName(rawTo);
-
-  if (from === to) {
-    throw new AppError("New name must differ from the current name.", 400);
-  }
-
-  const list = await getUserCustomCategories(userId);
-  const fromCanonical = resolveCustomName(list, from);
-
-  if (list.some((entry) => entry !== fromCanonical && entry.toLowerCase() === to.toLowerCase())) {
-    throw new AppError("You already have a category with this name.", 409);
-  }
-
-  if (predefinedLower.has(to.toLowerCase())) {
-    const predefinedName = expenseCategoryValues.find((value) => value.toLowerCase() === to.toLowerCase()) ?? to;
-    await recategorizeExpenses(userId, fromCanonical, predefinedName);
-    await setUserCustomCategories(
-      userId,
-      list.filter((entry) => entry !== fromCanonical),
-    );
-    await recalculateGoalForecasts(userId);
-    return listCustomCategories(userId);
-  }
-
-  assertNotPredefined(to);
-
-  await recategorizeExpenses(userId, fromCanonical, to);
-  await setUserCustomCategories(
+  await recategorizeExpenses(userId, found.name, "Other");
+  await setUserCustomCategoryDocs(
     userId,
-    list.map((entry) => (entry === fromCanonical ? to : entry)),
+    docs.filter((entry) => entry.categoryId !== categoryId),
   );
-
   await recalculateGoalForecasts(userId);
-  return listCustomCategories(userId);
-};
-
-export const deleteCustomCategory = async (userId: string, name: string) => {
-  const decoded = normalizeName(decodeURIComponent(name));
-  const list = await getUserCustomCategories(userId);
-  const canonical = resolveCustomName(list, decoded);
-
-  await recategorizeExpenses(userId, canonical, "Other");
-  await setUserCustomCategories(
-    userId,
-    list.filter((entry) => entry !== canonical),
-  );
-
-  await recalculateGoalForecasts(userId);
-  return listCustomCategories(userId);
+  return listCategories(userId);
 };

@@ -7,6 +7,7 @@ import { DateFilter } from "@/components/DateFilter";
 import { useDateFilter } from "@/hooks/use-date-filter";
 import { daysInclusiveInRange, formatDateRangeLabel, type DateFilterKind } from "@/lib/date-filter";
 import {
+  type CategoryPaletteEntry,
   type ChartSeriesPoint,
   formatCurrency,
   getCategoryColor,
@@ -18,6 +19,7 @@ import {
 import { RADIUS_DENSE, sectionLabelSx, surfaceCard } from "@/theme/ui";
 
 type ReportsViewProps = {
+  categoryPalette: readonly CategoryPaletteEntry[];
   expenses: Expense[];
 };
 
@@ -65,7 +67,7 @@ const buildReportSeries = (kind: DateFilterKind, filtered: Expense[], fromIso: s
   return { series: getMonthlySeriesForRange(filtered, fromIso, toIso), bucketLabel: "month" };
 };
 
-export const ReportsView = ({ expenses }: ReportsViewProps) => {
+export const ReportsView = ({ categoryPalette, expenses }: ReportsViewProps) => {
   const { applyCustomRange, fromDate, kind, selectPreset, toDate } = useDateFilter("month", "reports");
 
   const filteredExpenses = useMemo(
@@ -183,12 +185,12 @@ export const ReportsView = ({ expenses }: ReportsViewProps) => {
 
               return (
                 <Stack key={entry.category} direction="row" spacing={1.5} alignItems="center">
-                  <Box sx={{ width: 8, height: 8, borderRadius: "50%", flexShrink: 0, bgcolor: getCategoryColor(entry.category) }} />
+                  <Box sx={{ width: 8, height: 8, borderRadius: "50%", flexShrink: 0, bgcolor: getCategoryColor(entry.category, categoryPalette) }} />
                   <Typography sx={{ width: { xs: 72, sm: 100 }, fontWeight: 600, fontSize: 14, flexShrink: 0 }} noWrap>
                     {entry.category}
                   </Typography>
                   <Box sx={(theme) => ({ flex: 1, height: 6, borderRadius: "4px", bgcolor: alpha(theme.palette.common.white, 0.08), minWidth: 0 })}>
-                    <Box sx={{ width: `${Math.max(percent, 2)}%`, height: "100%", borderRadius: "4px", bgcolor: getCategoryColor(entry.category) }} />
+                    <Box sx={{ width: `${Math.max(percent, 2)}%`, height: "100%", borderRadius: "4px", bgcolor: getCategoryColor(entry.category, categoryPalette) }} />
                   </Box>
                   <Typography sx={{ minWidth: 72, textAlign: "right", fontWeight: 700, fontSize: 14, flexShrink: 0 }}>{formatCurrency(entry.total)}</Typography>
                 </Stack>
