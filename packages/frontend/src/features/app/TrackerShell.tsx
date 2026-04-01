@@ -146,7 +146,7 @@ export const TrackerShell = ({ onLogout }: TrackerShellProps) => {
           <Stack direction="row" spacing={1} alignItems="center" sx={{ flexShrink: 0 }}>
             <Box
               sx={(theme) => ({
-                display: { xs: "none", md: "flex" },
+                display: { xs: "none", lg: "flex" },
                 flexWrap: "wrap",
                 gap: 0.5,
                 p: 0.5,
@@ -217,6 +217,7 @@ export const TrackerShell = ({ onLogout }: TrackerShellProps) => {
               overflowY: "auto",
               overflowX: "hidden",
               WebkitOverflowScrolling: "touch",
+              pb: { xs: "calc(72px + env(safe-area-inset-bottom, 0px))", lg: 0 },
             }}
           >
             {tab === "home" ? (
@@ -236,23 +237,28 @@ export const TrackerShell = ({ onLogout }: TrackerShellProps) => {
             {tab === "reports" ? <ReportsView expenses={expenses} /> : null}
             {tab === "categories" ? <CategoriesView expenses={expenses} /> : null}
           </Box>
-
-          <Box
-            sx={(theme) => ({
-              display: { xs: "block", md: "none" },
-              flexShrink: 0,
-              borderTop: `1px solid ${alpha(theme.palette.common.white, 0.08)}`,
-              bgcolor: alpha(theme.palette.background.paper, 0.9),
-              backdropFilter: "blur(12px)",
-            })}
-          >
-            <BottomNavigation value={tab} onChange={(_event, value) => setTab(value)} showLabels>
-              {tabs.map((item) => (
-                <BottomNavigationAction key={item.value} label={item.label} value={item.value} icon={item.icon} />
-              ))}
-            </BottomNavigation>
-          </Box>
         </Box>
+      </Box>
+
+      <Box
+        sx={(theme) => ({
+          display: { xs: "block", lg: "none" },
+          position: "fixed",
+          bottom: 0,
+          left: 0,
+          right: 0,
+          zIndex: theme.zIndex.appBar,
+          borderTop: `1px solid ${alpha(theme.palette.common.white, 0.12)}`,
+          bgcolor: alpha(theme.palette.background.paper, 0.92),
+          backdropFilter: "blur(14px)",
+          boxShadow: `0 -8px 32px ${alpha("#000000", 0.35)}`,
+        })}
+      >
+        <BottomNavigation value={tab} onChange={(_event, value) => setTab(value)} showLabels>
+          {tabs.map((item) => (
+            <BottomNavigationAction key={item.value} label={item.label} value={item.value} icon={item.icon} />
+          ))}
+        </BottomNavigation>
       </Box>
 
       <ExpenseEditorDialog
