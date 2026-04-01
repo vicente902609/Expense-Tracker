@@ -40,6 +40,7 @@ export const useExpenseEditor = (
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["expenses"] }),
       queryClient.invalidateQueries({ queryKey: ["goals"] }),
+      queryClient.invalidateQueries({ queryKey: ["reports"] }),
     ]);
   };
 

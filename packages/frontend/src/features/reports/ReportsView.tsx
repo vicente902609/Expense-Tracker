@@ -1,23 +1,19 @@
 import { useMemo } from "react";
-import type { Expense } from "@expense-tracker/shared";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { alpha } from "@mui/material/styles";
 import { Box, CircularProgress, Stack, Tooltip, Typography } from "@mui/material";
 
-import { fetchExpensesInRange } from "@/api/expenses";
+import { fetchByCategoryReport, fetchMonthlyReport } from "@/api/reports";
 import { DateFilter } from "@/components/DateFilter";
 import { useDateFilter } from "@/hooks/use-date-filter";
-import { daysInclusiveInRange, formatDateRangeLabel, type DateFilterKind } from "@/lib/date-filter";
+import { formatDateRangeLabel, type DateFilterKind } from "@/lib/date-filter";
 import {
   type CategoryPaletteEntry,
   type ChartSeriesPoint,
   formatCurrency,
+  formatMonthLabel,
   getCategoryColor,
   getCategoryLabel,
-  getCategoryTotals,
-  getDailySeriesForRange,
-  getMonthlySeriesForRange,
-  getWeeklySeriesForRange,
 } from "@/lib/expense-ui";
 import { RADIUS_DENSE, sectionLabelSx, surfaceCard } from "@/theme/ui";
 
@@ -26,74 +22,56 @@ type ReportsViewProps = {
 };
 
 const chartTitleForKind = (kind: DateFilterKind) => {
-  if (kind === "today") {
-    return "This week";
-  }
-  if (kind === "week") {
-    return "This month";
-  }
   if (kind === "month") {
     return "Last 6 months";
   }
-  return "Custom range";
-};
-
-type SeriesResult = {
-  series: ChartSeriesPoint[];
-  bucketLabel: string;
-};
-
-const buildReportSeries = (kind: DateFilterKind, filtered: Expense[], fromIso: string, toIso: string): SeriesResult => {
-  if (kind === "today") {
-    return { series: getDailySeriesForRange(filtered, fromIso, toIso, { weekdayLabels: true }), bucketLabel: "day" };
-  }
   if (kind === "week") {
-    return { series: getWeeklySeriesForRange(filtered, fromIso, toIso), bucketLabel: "week" };
+    return "This year";
   }
-  if (kind === "month") {
-    return { series: getMonthlySeriesForRange(filtered, fromIso, toIso), bucketLabel: "month" };
+  if (kind === "range") {
+    return "Custom range";
   }
-
-  const days = daysInclusiveInRange(fromIso, toIso);
-  const from = new Date(`${fromIso}T12:00:00`);
-  const to = new Date(`${toIso}T12:00:00`);
-  const twoMonthsAfterFrom = new Date(from.getFullYear(), from.getMonth() + 2, from.getDate(), 12, 0, 0);
-  const isAboveTwoMonths = to > twoMonthsAfterFrom;
-
-  if (days < 14) {
-    return { series: getDailySeriesForRange(filtered, fromIso, toIso), bucketLabel: "day" };
-  }
-  if (!isAboveTwoMonths) {
-    return { series: getWeeklySeriesForRange(filtered, fromIso, toIso), bucketLabel: "week" };
-  }
-  return { series: getMonthlySeriesForRange(filtered, fromIso, toIso), bucketLabel: "month" };
+  return "Selected range";
 };
 
 export const ReportsView = ({ categoryPalette }: ReportsViewProps) => {
   const { applyCustomRange, fromDate, kind, selectPreset, toDate } = useDateFilter("month", "reports");
 
-  const expensesQuery = useQuery({
-    queryKey: ["expenses", "range", fromDate, toDate],
-    queryFn: () => fetchExpensesInRange(fromDate, toDate),
+  const monthlyQuery = useQuery({
+    queryKey: ["reports", "monthly", fromDate, toDate],
+    queryFn: () => fetchMonthlyReport(fromDate, toDate),
     placeholderData: keepPreviousData,
   });
 
-  const filteredExpenses = expensesQuery.data ?? [];
+  const byCategoryQuery = useQuery({
+    queryKey: ["reports", "by-category", fromDate, toDate],
+    queryFn: () => fetchByCategoryReport(fromDate, toDate),
+    placeholderData: keepPreviousData,
+  });
 
-  const { series, bucketLabel } = useMemo(
-    () => buildReportSeries(kind, filteredExpenses, fromDate, toDate),
-    [kind, filteredExpenses, fromDate, toDate],
-  );
+  const series: ChartSeriesPoint[] = useMemo(() => {
+    const months = monthlyQuery.data?.months ?? [];
+    return months.map((m) => ({
+      key: m.month,
+      label: formatMonthLabel(`${m.month}-01`),
+      total: m.total,
+    }));
+  }, [monthlyQuery.data]);
 
+  const periodTotal = useMemo(() => series.reduce((sum, entry) => sum + entry.total, 0), [series]);
+  const bucketLabel = "month";
   const maxValue = Math.max(...series.map((entry) => entry.total), 1);
-  const categoryTotals = useMemo(
-    () => getCategoryTotals(filteredExpenses, (id) => getCategoryLabel(id, categoryPalette)),
-    [filteredExpenses, categoryPalette],
-  );
-  const periodTotal = filteredExpenses.reduce((sum, expense) => sum + expense.amount, 0);
   const averagePerBucket = series.length > 0 ? periodTotal / series.length : 0;
 
-  if (expensesQuery.isPending && expensesQuery.data === undefined) {
+  const categoryRows = byCategoryQuery.data?.categories ?? [];
+
+  const loadingInitial =
+    (monthlyQuery.isPending && monthlyQuery.data === undefined) ||
+    (byCategoryQuery.isPending && byCategoryQuery.data === undefined);
+
+  const queryError = monthlyQuery.error ?? byCategoryQuery.error;
+
+  if (loadingInitial) {
     return (
       <Box sx={{ display: "grid", placeItems: "center", py: 10 }}>
         <CircularProgress />
@@ -118,7 +96,7 @@ export const ReportsView = ({ categoryPalette }: ReportsViewProps) => {
             Spending insights
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-            This week by day, this month by week, or last 6 months by month — or pick a custom range
+            Last 6 months or this year — or pick a custom range. Monthly and category totals are loaded from the server.
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 1, fontWeight: 600 }}>
             Showing {formatDateRangeLabel(fromDate, toDate)}
@@ -129,7 +107,8 @@ export const ReportsView = ({ categoryPalette }: ReportsViewProps) => {
           align="right"
           fromDate={fromDate}
           kind={kind}
-          labels={{ today: "This week", week: "This month", month: "Last 6 months", range: "Date range" }}
+          labels={{ week: "This year", month: "Last 6 months", range: "Date range" }}
+          presetVisibility={{ today: false, week: true, month: true }}
           scope="reports"
           toDate={toDate}
           onApplyRange={applyCustomRange}
@@ -137,11 +116,15 @@ export const ReportsView = ({ categoryPalette }: ReportsViewProps) => {
         />
       </Box>
 
+      {queryError ? (
+        <Typography color="error">Could not load reports. Try again or check your connection.</Typography>
+      ) : null}
+
       <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 1fr) minmax(0, 1fr)" } }}>
         <Box sx={(theme) => ({ overflow: "hidden", ...surfaceCard(theme) })}>
           <Box sx={(theme) => ({ p: 2, borderBottom: `1px solid ${alpha(theme.palette.common.white, 0.08)}` })}>
             <Typography sx={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: "text.secondary", textTransform: "uppercase" }}>
-              {chartTitleForKind(kind)} · spending
+              {chartTitleForKind(kind)} · spending by month
             </Typography>
           </Box>
           <Box sx={{ p: 2 }}>
@@ -193,22 +176,27 @@ export const ReportsView = ({ categoryPalette }: ReportsViewProps) => {
             </Typography>
           </Box>
           <Stack spacing={1.5} sx={{ p: 2 }}>
-            {categoryTotals.length === 0 ? (
+            {categoryRows.length === 0 ? (
               <Typography sx={{ py: 1, color: "text.secondary" }}>No category data in this range.</Typography>
             ) : null}
-            {categoryTotals.map((entry) => {
-              const percent = periodTotal > 0 ? (entry.total / periodTotal) * 100 : 0;
+            {categoryRows.map((row) => {
+              const label = getCategoryLabel(row.categoryId, categoryPalette);
+              const percent = periodTotal > 0 ? (row.total / periodTotal) * 100 : 0;
 
               return (
-                <Stack key={entry.category} direction="row" spacing={1.5} alignItems="center">
-                  <Box sx={{ width: 8, height: 8, borderRadius: "50%", flexShrink: 0, bgcolor: getCategoryColor(entry.category, categoryPalette) }} />
+                <Stack key={row.categoryId} direction="row" spacing={1.5} alignItems="center">
+                  <Box
+                    sx={{ width: 8, height: 8, borderRadius: "50%", flexShrink: 0, bgcolor: getCategoryColor(row.categoryId, categoryPalette) }}
+                  />
                   <Typography sx={{ width: { xs: 72, sm: 100 }, fontWeight: 600, fontSize: 14, flexShrink: 0 }} noWrap>
-                    {entry.category}
+                    {label}
                   </Typography>
                   <Box sx={(theme) => ({ flex: 1, height: 6, borderRadius: "4px", bgcolor: alpha(theme.palette.common.white, 0.08), minWidth: 0 })}>
-                    <Box sx={{ width: `${Math.max(percent, 2)}%`, height: "100%", borderRadius: "4px", bgcolor: getCategoryColor(entry.category, categoryPalette) }} />
+                    <Box
+                      sx={{ width: `${Math.max(percent, 2)}%`, height: "100%", borderRadius: "4px", bgcolor: getCategoryColor(row.categoryId, categoryPalette) }}
+                    />
                   </Box>
-                  <Typography sx={{ minWidth: 72, textAlign: "right", fontWeight: 700, fontSize: 14, flexShrink: 0 }}>{formatCurrency(entry.total)}</Typography>
+                  <Typography sx={{ minWidth: 72, textAlign: "right", fontWeight: 700, fontSize: 14, flexShrink: 0 }}>{formatCurrency(row.total)}</Typography>
                 </Stack>
               );
             })}

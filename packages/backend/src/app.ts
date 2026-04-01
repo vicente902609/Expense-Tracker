@@ -9,6 +9,7 @@ import { authRouter } from "./modules/auth/routes.js";
 import { categoriesRouter } from "./modules/categories/routes.js";
 import { expensesRouter } from "./modules/expenses/routes.js";
 import { goalsRouter } from "./modules/goals/routes.js";
+import { reportsRouter } from "./modules/reports/routes.js";
 
 export const createApp = () => {
   const app = express();
@@ -37,6 +38,7 @@ export const createApp = () => {
     app.use(`${base}/goals`, authenticate, goalsRouter);
     app.use(`${base}/categories`, authenticate, categoriesRouter);
     app.use(`${base}/ai`, authenticate, aiRouter);
+    app.use(`${base}/reports`, authenticate, reportsRouter);
   };
 
   app.use("/api/v1/auth", authRouter);

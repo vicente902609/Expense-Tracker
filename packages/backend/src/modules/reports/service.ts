@@ -1,21 +1,13 @@
-import { fetchAllExpensesInDateRange } from '../repositories/expense.repository';
+import type { ByCategoryReportResponse, MonthlyReportResponse } from "@expense-tracker/shared";
 
-export interface MonthlyTotal {
-  month: string;
-  total: number;
-  count: number;
-}
-
-export interface MonthlyReportResult {
-  months: MonthlyTotal[];
-}
+import { findExpensesInDateRangeForReports } from "../expenses/repository.js";
 
 export const getMonthlyReport = async (
   userId: string,
   startDate?: string,
   endDate?: string,
-): Promise<MonthlyReportResult> => {
-  const items = await fetchAllExpensesInDateRange(userId, startDate, endDate);
+): Promise<MonthlyReportResponse> => {
+  const items = await findExpensesInDateRangeForReports(userId, startDate, endDate);
 
   const totalsMap = new Map<string, { total: number; count: number }>();
 
@@ -27,29 +19,19 @@ export const getMonthlyReport = async (
     totalsMap.set(month, entry);
   }
 
-  const months: MonthlyTotal[] = Array.from(totalsMap.entries())
+  const months = Array.from(totalsMap.entries())
     .map(([month, { total, count }]) => ({ month, total, count }))
     .sort((a, b) => a.month.localeCompare(b.month));
 
   return { months };
 };
 
-export interface CategoryTotal {
-  categoryId: string;
-  total: number;
-  count: number;
-}
-
-export interface ByCategoryReportResult {
-  categories: CategoryTotal[];
-}
-
 export const getByCategoryReport = async (
   userId: string,
   startDate?: string,
   endDate?: string,
-): Promise<ByCategoryReportResult> => {
-  const items = await fetchAllExpensesInDateRange(userId, startDate, endDate);
+): Promise<ByCategoryReportResponse> => {
+  const items = await findExpensesInDateRangeForReports(userId, startDate, endDate);
 
   const totalsMap = new Map<string, { total: number; count: number }>();
 
@@ -60,7 +42,7 @@ export const getByCategoryReport = async (
     totalsMap.set(item.categoryId, entry);
   }
 
-  const categories: CategoryTotal[] = Array.from(totalsMap.entries())
+  const categories = Array.from(totalsMap.entries())
     .map(([categoryId, { total, count }]) => ({ categoryId, total, count }))
     .sort((a, b) => b.total - a.total);
 
