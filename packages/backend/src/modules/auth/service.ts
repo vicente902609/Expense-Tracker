@@ -1,70 +1,121 @@
-import { authPayloadSchema, type AuthResponse } from "@expense-tracker/shared";
+import type { AuthSessionData, AuthTokens, RefreshTokensData } from "@expense-tracker/shared";
 import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
-import { z } from "zod";
 
-import { env } from "../../config/env.js";
 import { AppError } from "../../lib/errors.js";
-import { createUser, getUserByEmail } from "../users/repository.js";
+import { refreshTokenExpiresAt, signAccessToken, signRefreshToken, verifyRefreshToken } from "../../lib/jwt.js";
+import { deleteRefreshToken, getRefreshToken, putRefreshToken } from "./refresh-token.repository.js";
+import { createUser, getUserByEmail, toPublicUser } from "../users/repository.js";
 
-const signToken = (userId: string) =>
-  jwt.sign(
-    {
-      sub: userId,
-    },
-    env.JWT_SECRET,
-    {
-      expiresIn: "7d",
-    },
-  );
+const BCRYPT_ROUNDS = 12;
 
-export const registerUser = async (payload: unknown): Promise<AuthResponse> => {
-  const input = authPayloadSchema
-    .extend({
-      name: z.string().trim().min(2).max(80),
-    })
-    .parse(payload);
+export type RegisterError = "EMAIL_TAKEN";
+export type LoginError = "INVALID_CREDENTIALS";
+export type RefreshError = "INVALID_TOKEN";
 
-  const existingUser = await getUserByEmail(input.email);
-
-  if (existingUser) {
-    throw new AppError("An account with that email already exists", 409);
-  }
-
-  const passwordHash = await bcrypt.hash(input.password, 10);
-  const user = await createUser({
-    email: input.email,
-    passwordHash,
-    name: input.name,
+const issueTokensForUser = async (userId: string): Promise<AuthTokens> => {
+  const tokenId = crypto.randomUUID();
+  const now = new Date().toISOString();
+  await putRefreshToken({
+    userId,
+    tokenId,
+    expiresAt: refreshTokenExpiresAt(),
+    createdAt: now,
   });
-
   return {
-    token: signToken(user.id),
-    user,
+    accessToken: signAccessToken(userId),
+    refreshToken: signRefreshToken(userId, tokenId),
   };
 };
 
-export const loginUser = async (payload: unknown): Promise<AuthResponse> => {
-  const input = authPayloadSchema.parse(payload);
-  const userDocument = await getUserByEmail(input.email);
+export const logoutUser = async (userId: string, rawRefreshToken: string): Promise<void> => {
+  let tokenId: string;
+  try {
+    const payload = verifyRefreshToken(rawRefreshToken);
+    tokenId = payload.jti;
+  } catch {
+    return;
+  }
+  await deleteRefreshToken(userId, tokenId);
+};
 
-  if (!userDocument) {
-    throw new AppError("Invalid email or password", 401);
+export const refreshTokens = async (rawRefreshToken: string): Promise<RefreshTokensData | RefreshError> => {
+  let userId: string;
+  let tokenId: string;
+
+  try {
+    const payload = verifyRefreshToken(rawRefreshToken);
+    userId = payload.sub;
+    tokenId = payload.jti;
+  } catch {
+    return "INVALID_TOKEN";
   }
 
-  const passwordMatches = await bcrypt.compare(input.password, userDocument.passwordHash);
-
-  if (!passwordMatches) {
-    throw new AppError("Invalid email or password", 401);
+  const stored = await getRefreshToken(userId, tokenId);
+  if (!stored) {
+    return "INVALID_TOKEN";
   }
+
+  await deleteRefreshToken(userId, tokenId);
+
+  const newTokenId = crypto.randomUUID();
+  const now = new Date().toISOString();
+  await putRefreshToken({
+    userId,
+    tokenId: newTokenId,
+    expiresAt: refreshTokenExpiresAt(),
+    createdAt: now,
+  });
 
   return {
-    token: signToken(userDocument._id.toHexString()),
-    user: {
-      id: userDocument._id.toHexString(),
-      email: userDocument.email,
-      name: userDocument.name,
-      createdAt: userDocument.createdAt,
+    tokens: {
+      accessToken: signAccessToken(userId),
+      refreshToken: signRefreshToken(userId, newTokenId),
     },
+  };
+};
+
+export const loginUser = async (email: string, password: string): Promise<AuthSessionData | LoginError> => {
+  const userItem = await getUserByEmail(email.toLowerCase());
+  if (!userItem) {
+    return "INVALID_CREDENTIALS";
+  }
+
+  const passwordMatch = await bcrypt.compare(password, userItem.passwordHash);
+  if (!passwordMatch) {
+    return "INVALID_CREDENTIALS";
+  }
+
+  const userId = userItem._id!.toHexString();
+  const tokens = await issueTokensForUser(userId);
+
+  return {
+    user: toPublicUser(userItem),
+    tokens,
+  };
+};
+
+export const registerUser = async (email: string, password: string, name: string): Promise<AuthSessionData | RegisterError> => {
+  const existing = await getUserByEmail(email.toLowerCase());
+  if (existing) {
+    return "EMAIL_TAKEN";
+  }
+
+  const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
+  const created = await createUser({
+    email: email.toLowerCase(),
+    passwordHash,
+    name,
+  });
+
+  const document = await getUserByEmail(email.toLowerCase());
+  if (!document) {
+    throw new AppError("Registration failed", 500);
+  }
+
+  const tokens = await issueTokensForUser(created.id);
+
+  return {
+    user: toPublicUser(document),
+    tokens,
   };
 };

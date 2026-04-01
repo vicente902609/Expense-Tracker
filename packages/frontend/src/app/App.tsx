@@ -9,5 +9,5 @@ export const App = () => {
     return <AuthView onAuthenticated={auth.saveSession} />;
   }
 
-  return <TrackerShell onLogout={auth.clearSession} />;
+  return <TrackerShell onLogout={auth.logout} />;
 };

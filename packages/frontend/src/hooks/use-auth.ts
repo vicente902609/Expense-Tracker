@@ -1,31 +1,41 @@
 import { useState } from "react";
-import type { User } from "@expense-tracker/shared";
+import type { AuthSessionData, PublicUser } from "@expense-tracker/shared";
 
+import { logout as logoutApi } from "@/api/auth";
 import { authStorage } from "@/lib/storage";
 
 export const useAuth = () => {
-  const [token, setToken] = useState<string | null>(() => authStorage.getToken());
-  const [user, setUser] = useState<User | null>(() => authStorage.getUser());
+  const [accessToken, setAccessToken] = useState<string | null>(() => authStorage.getAccessToken());
+  const [user, setUser] = useState<PublicUser | null>(() => authStorage.getUser());
 
-  const saveSession = (nextToken: string, nextUser: User) => {
-    authStorage.setToken(nextToken);
-    authStorage.setUser(nextUser);
-    setToken(nextToken);
-    setUser(nextUser);
+  const saveSession = (session: AuthSessionData) => {
+    authStorage.setTokens(session.tokens.accessToken, session.tokens.refreshToken);
+    authStorage.setUser(session.user);
+    setAccessToken(session.tokens.accessToken);
+    setUser(session.user);
   };
 
   const clearSession = () => {
-    authStorage.clearToken();
-    authStorage.clearUser();
-    setToken(null);
+    authStorage.clearSession();
+    setAccessToken(null);
     setUser(null);
   };
 
+  const logout = async () => {
+    try {
+      await logoutApi();
+    } catch {
+      // still clear local session
+    }
+    clearSession();
+  };
+
   return {
-    isAuthenticated: Boolean(token),
-    token,
+    isAuthenticated: Boolean(accessToken),
+    accessToken,
     user,
     saveSession,
     clearSession,
+    logout,
   };
 };

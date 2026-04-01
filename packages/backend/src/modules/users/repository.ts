@@ -1,4 +1,4 @@
-import type { User } from "@expense-tracker/shared";
+import type { PublicUser, User } from "@expense-tracker/shared";
 import { ObjectId } from "mongodb";
 
 import { getDatabase } from "../../lib/db.js";
@@ -10,6 +10,7 @@ type UserDocument = {
   passwordHash: string;
   name: string;
   createdAt: string;
+  updatedAt?: string;
   customCategories?: string[];
 };
 
@@ -20,6 +21,14 @@ const mapUser = (document: UserDocument): User => ({
   email: document.email,
   name: document.name,
   createdAt: document.createdAt,
+});
+
+export const toPublicUser = (document: UserDocument): PublicUser => ({
+  userId: document._id!.toHexString(),
+  email: document.email,
+  name: document.name,
+  createdAt: document.createdAt,
+  updatedAt: document.updatedAt ?? document.createdAt,
 });
 
 export const getUsersCollection = async () => {
@@ -46,6 +55,7 @@ export const createUser = async (input: { email: string; passwordHash: string; n
     passwordHash: input.passwordHash,
     name: input.name,
     createdAt: now,
+    updatedAt: now,
     customCategories: [],
   };
 

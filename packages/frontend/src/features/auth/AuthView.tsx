@@ -4,11 +4,13 @@ import { Alert, Box, Button, Container, Stack, TextField, Typography } from "@mu
 import CurrencyExchangeRoundedIcon from "@mui/icons-material/CurrencyExchangeRounded";
 import { useMutation } from "@tanstack/react-query";
 
+import type { AuthSessionData } from "@expense-tracker/shared";
+
 import { login, register } from "@/api/auth";
 import { appShellGradient, RADIUS_INNER, RADIUS_SHELL } from "@/theme/ui";
 
 type AuthViewProps = {
-  onAuthenticated: (token: string, user: { id: string; email: string; name: string; createdAt: string }) => void;
+  onAuthenticated: (session: AuthSessionData) => void;
 };
 
 export const AuthView = ({ onAuthenticated }: AuthViewProps) => {
@@ -21,16 +23,13 @@ export const AuthView = ({ onAuthenticated }: AuthViewProps) => {
 
   const mutation = useMutation({
     mutationFn: async () => {
-      const payload = {
-        email: form.email,
-        password: form.password,
-        ...(mode === "register" ? { name: form.name } : {}),
-      };
-
-      return mode === "register" ? register(payload) : login(payload);
+      if (mode === "register") {
+        return register({ name: form.name, email: form.email, password: form.password });
+      }
+      return login({ email: form.email, password: form.password });
     },
     onSuccess: (data) => {
-      onAuthenticated(data.token, data.user);
+      onAuthenticated(data);
     },
   });
 
