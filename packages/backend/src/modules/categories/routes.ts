@@ -1,6 +1,6 @@
 import { Router } from "express";
 
-import { sendCreated } from "../../lib/api-response.js";
+import { sendCreated, sendOk } from "../../lib/api-response.js";
 import { AppError } from "../../lib/errors.js";
 import { asyncHandler } from "../../lib/http.js";
 import { addCustomCategory, deleteCustomCategory, listCategories, updateCustomCategory } from "./service.js";
@@ -31,18 +31,18 @@ categoriesRouter.post(
   }),
 );
 
-categoriesRouter.patch(
+categoriesRouter.put(
   "/:categoryId",
   asyncHandler(async (request, response) => {
-    const categories = await updateCustomCategory(request.authUser!.id, getCategoryIdParam(request.params.categoryId), request.body);
-    response.json(categories);
+    const result = await updateCustomCategory(request.authUser!.id, getCategoryIdParam(request.params.categoryId), request.body);
+    sendOk(response, result);
   }),
 );
 
 categoriesRouter.delete(
   "/:categoryId",
   asyncHandler(async (request, response) => {
-    const categories = await deleteCustomCategory(request.authUser!.id, getCategoryIdParam(request.params.categoryId));
-    response.json(categories);
+    const result = await deleteCustomCategory(request.authUser!.id, getCategoryIdParam(request.params.categoryId));
+    sendOk(response, result);
   }),
 );

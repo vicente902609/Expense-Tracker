@@ -1,4 +1,5 @@
-import { addCustomCategorySchema, updateCustomCategoryBodySchema } from "@expense-tracker/shared";
+import type { CategoriesListResponse, CustomCategoryApi } from "@expense-tracker/shared";
+import { addCustomCategorySchema, putCustomCategoryBodySchema } from "@expense-tracker/shared";
 import { randomUUID } from "node:crypto";
 
 import { AppError } from "../../lib/errors.js";
@@ -69,8 +70,12 @@ export const addCustomCategory = async (userId: string, payload: unknown) => {
   };
 };
 
-export const updateCustomCategory = async (userId: string, categoryId: string, payload: unknown) => {
-  const parsed = updateCustomCategoryBodySchema.parse(payload);
+export const updateCustomCategory = async (
+  userId: string,
+  categoryId: string,
+  payload: unknown,
+): Promise<CustomCategoryApi | CategoriesListResponse> => {
+  const parsed = putCustomCategoryBodySchema.parse(payload);
   const docs = await getUserCustomCategoryDocs(userId);
   const index = docs.findIndex((entry) => entry.categoryId === categoryId);
 
@@ -79,7 +84,8 @@ export const updateCustomCategory = async (userId: string, categoryId: string, p
   }
 
   const current = docs[index]!;
-  const nextName = parsed.name !== undefined ? normalizeName(parsed.name) : current.name;
+  const nextName = normalizeName(parsed.name);
+  const nextColor = parsed.color;
   const predefinedRows = await listPredefinedCategoryDocuments();
   const predefinedMatch = predefinedRows.find((row) => row.name.toLowerCase() === nextName.toLowerCase());
 
@@ -100,30 +106,26 @@ export const updateCustomCategory = async (userId: string, categoryId: string, p
     throw new AppError("You already have a category with this name.", 409);
   }
 
-  const nameChanging = parsed.name !== undefined && nextName !== current.name;
-  if (nameChanging) {
+  if (nextName !== current.name) {
     await recategorizeExpenses(userId, current.name, nextName);
   }
 
-  const colorPatch = parsed.color;
   const updated: UserCustomCategoryDoc = {
     categoryId: current.categoryId,
     name: nextName,
+    color: nextColor,
     createdAt: current.createdAt,
   };
-
-  if (colorPatch === null) {
-    /* omit color */
-  } else if (colorPatch !== undefined) {
-    updated.color = colorPatch;
-  } else if (current.color) {
-    updated.color = current.color;
-  }
 
   const nextDocs = docs.map((entry, i) => (i === index ? updated : entry));
   await setUserCustomCategoryDocs(userId, nextDocs);
   await recalculateGoalForecasts(userId);
-  return listCategories(userId);
+  return {
+    categoryId: updated.categoryId,
+    name: updated.name,
+    color: updated.color ?? DEFAULT_CUSTOM_COLOR,
+    createdAt: updated.createdAt,
+  };
 };
 
 export const deleteCustomCategory = async (userId: string, categoryId: string) => {
@@ -140,5 +142,5 @@ export const deleteCustomCategory = async (userId: string, categoryId: string) =
     docs.filter((entry) => entry.categoryId !== categoryId),
   );
   await recalculateGoalForecasts(userId);
-  return listCategories(userId);
+  return { categoryId };
 };

@@ -320,21 +320,9 @@ export const addCustomCategorySchema = z.object({
   color: categoryHexColorSchema,
 });
 
-export const updateCustomCategoryBodySchema = z
-  .object({
-    name: customCategoryNameSchema.optional(),
-    color: z.union([categoryHexColorSchema, z.null()]).optional(),
-  })
-  .superRefine((data, ctx) => {
-    if (data.name === undefined && data.color === undefined) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Provide at least one of name or color.",
-      });
-    }
-  });
-
-export type UpdateCustomCategoryBody = z.infer<typeof updateCustomCategoryBodySchema>;
+/** PUT /categories/:categoryId (new-backend): full replacement — name and hex color both required. */
+export const putCustomCategoryBodySchema = addCustomCategorySchema;
+export type PutCustomCategoryBody = z.infer<typeof putCustomCategoryBodySchema>;
 
 export type AddCustomCategoryInput = z.infer<typeof addCustomCategorySchema>;
 

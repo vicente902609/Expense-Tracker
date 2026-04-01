@@ -13,8 +13,13 @@ export const addCustomCategory = (name: string, color: string) =>
     body: { name, color },
   });
 
-export const updateCustomCategory = (categoryId: string, body: { name?: string; color?: string | null }) =>
-  apiRequest<CategoriesListResponse>(`/categories/${encodeURIComponent(categoryId)}`, { method: "PATCH", body });
+/** PUT /categories/:id — body `{ name, color }`; usually returns updated row; merge-into-predefined returns full list. */
+export const updateCustomCategory = (categoryId: string, body: { name: string; color: string }) =>
+  apiRequest<CustomCategoryApi | CategoriesListResponse>(`/categories/${encodeURIComponent(categoryId)}`, {
+    method: "PUT",
+    body,
+  });
 
+/** DELETE /categories/:id — `{ categoryId }`. */
 export const deleteCustomCategory = (categoryId: string) =>
-  apiRequest<CategoriesListResponse>(`/categories/${encodeURIComponent(categoryId)}`, { method: "DELETE" });
+  apiRequest<{ categoryId: string }>(`/categories/${encodeURIComponent(categoryId)}`, { method: "DELETE" });

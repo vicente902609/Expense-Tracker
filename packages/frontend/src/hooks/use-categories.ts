@@ -27,10 +27,20 @@ export const useCategories = () => {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ categoryId, body }: { categoryId: string; body: { name?: string; color?: string | null } }) =>
+    mutationFn: ({ categoryId, body }: { categoryId: string; body: { name: string; color: string } }) =>
       updateCustomCategory(categoryId, body),
-    onSuccess: async (response) => {
-      await queryClient.setQueryData(["categories"], response);
+    onSuccess: async (data) => {
+      if ("predefined" in data) {
+        queryClient.setQueryData(["categories"], data);
+      } else {
+        queryClient.setQueryData(["categories"], (old: CategoriesListResponse | undefined) => {
+          const prev = old ?? { predefined: [], custom: [] };
+          const custom = prev.custom
+            .map((c) => (c.categoryId === data.categoryId ? data : c))
+            .sort((a, b) => a.name.localeCompare(b.name));
+          return { ...prev, custom };
+        });
+      }
       await queryClient.invalidateQueries({ queryKey: ["expenses"] });
       await queryClient.invalidateQueries({ queryKey: ["goals"] });
     },
@@ -38,8 +48,14 @@ export const useCategories = () => {
 
   const deleteMutation = useMutation({
     mutationFn: (categoryId: string) => deleteCustomCategory(categoryId),
-    onSuccess: async (response) => {
-      await queryClient.setQueryData(["categories"], response);
+    onSuccess: async (_, deletedId) => {
+      queryClient.setQueryData(["categories"], (old: CategoriesListResponse | undefined) => {
+        const prev = old ?? { predefined: [], custom: [] };
+        return {
+          ...prev,
+          custom: prev.custom.filter((c) => c.categoryId !== deletedId),
+        };
+      });
       await queryClient.invalidateQueries({ queryKey: ["expenses"] });
       await queryClient.invalidateQueries({ queryKey: ["goals"] });
     },
@@ -58,7 +74,7 @@ export const useCategories = () => {
       }
       await addMutation.mutateAsync({ name: trimmed, color });
     },
-    updateCategory: async (categoryId: string, body: { name?: string; color?: string | null }) => {
+    updateCategory: async (categoryId: string, body: { name: string; color: string }) => {
       await updateMutation.mutateAsync({ categoryId, body });
     },
     deleteCategory: async (categoryId: string) => {
