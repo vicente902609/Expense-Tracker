@@ -33,3 +33,36 @@ export const getMonthlyReport = async (
 
   return { months };
 };
+
+export interface CategoryTotal {
+  categoryId: string;
+  total: number;
+  count: number;
+}
+
+export interface ByCategoryReportResult {
+  categories: CategoryTotal[];
+}
+
+export const getByCategoryReport = async (
+  userId: string,
+  startDate?: string,
+  endDate?: string,
+): Promise<ByCategoryReportResult> => {
+  const items = await fetchAllExpensesInDateRange(userId, startDate, endDate);
+
+  const totalsMap = new Map<string, { total: number; count: number }>();
+
+  for (const item of items) {
+    const entry = totalsMap.get(item.categoryId) ?? { total: 0, count: 0 };
+    entry.total = Math.round((entry.total + item.amount) * 100) / 100;
+    entry.count += 1;
+    totalsMap.set(item.categoryId, entry);
+  }
+
+  const categories: CategoryTotal[] = Array.from(totalsMap.entries())
+    .map(([categoryId, { total, count }]) => ({ categoryId, total, count }))
+    .sort((a, b) => b.total - a.total);
+
+  return { categories };
+};

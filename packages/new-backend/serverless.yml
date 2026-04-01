@@ -125,6 +125,12 @@ functions:
       - httpApi:
           method: GET
           path: /reports/monthly
+  reportsByCategory:
+    handler: src/handlers/reports/by-category.handler
+    events:
+      - httpApi:
+          method: GET
+          path: /reports/by-category
 
 custom:
   esbuild:
