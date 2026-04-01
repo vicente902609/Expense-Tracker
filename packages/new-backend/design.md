@@ -114,7 +114,7 @@ Predefined items are written by a one-shot seed script (`scripts/seed-categories
 - `DELETE /expenses/{expenseId}`
 
 **Reports** *(all require JWT)*
-- `GET /reports/monthly?year=<YYYY>` — spending totals per month
+- `GET /reports/monthly?startDate=&endDate=` — spending totals per month
 - `GET /reports/by-category?startDate=&endDate=` — breakdown by category
 
 ---

@@ -191,3 +191,43 @@ export const listExpensesByUser = async (
     nextCursor,
   };
 };
+
+export const fetchAllExpensesInDateRange = async (
+  userId: string,
+  startDate?: string,
+  endDate?: string,
+): Promise<ExpenseItem[]> => {
+  const keyConditionParts = ['GSI2PK = :pk'];
+  const exprValues: Record<string, unknown> = { ':pk': `USER#${userId}` };
+
+  if (startDate && endDate) {
+    keyConditionParts.push('GSI2SK BETWEEN :start AND :end');
+    exprValues[':start'] = `DATE#${startDate}`;
+    exprValues[':end'] = `DATE#${endDate}~`;
+  } else if (startDate) {
+    keyConditionParts.push('GSI2SK >= :start');
+    exprValues[':start'] = `DATE#${startDate}`;
+  } else if (endDate) {
+    keyConditionParts.push('GSI2SK <= :end');
+    exprValues[':end'] = `DATE#${endDate}~`;
+  }
+
+  const items: ExpenseItem[] = [];
+  let lastEvaluatedKey: Record<string, unknown> | undefined;
+
+  do {
+    const response: QueryCommandOutput = await docClient.send(
+      new QueryCommand({
+        TableName: TABLE_NAME,
+        IndexName: 'GSI2-UserExpenseDateIndex',
+        KeyConditionExpression: keyConditionParts.join(' AND '),
+        ExpressionAttributeValues: exprValues,
+        ...(lastEvaluatedKey ? { ExclusiveStartKey: lastEvaluatedKey as never } : {}),
+      }),
+    );
+    items.push(...((response.Items ?? []) as ExpenseItem[]));
+    lastEvaluatedKey = response.LastEvaluatedKey as Record<string, unknown> | undefined;
+  } while (lastEvaluatedKey);
+
+  return items;
+};

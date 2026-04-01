@@ -118,6 +118,14 @@ functions:
           method: DELETE
           path: /expenses/{expenseId}
 
+  # ── Reports ───────────────────────────────────────────────────────────────
+  reportsMonthly:
+    handler: src/handlers/reports/monthly.handler
+    events:
+      - httpApi:
+          method: GET
+          path: /reports/monthly
+
 custom:
   esbuild:
     bundle: true
