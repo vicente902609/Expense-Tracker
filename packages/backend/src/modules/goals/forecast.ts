@@ -30,6 +30,33 @@ const getCurrentMonthSpend = (expenses: Expense[], todayIso: string) => {
   return sum(expenses.filter((expense) => toMonthKey(expense.date) === monthKey).map((expense) => expense.amount));
 };
 
+/** Sum expense amounts with `date` in [fromIso, toIso] (YYYY-MM-DD lexicographic order). */
+const sumExpensesInInclusiveRange = (expenses: Expense[], fromIso: string, toIso: string) =>
+  sum(expenses.filter((expense) => expense.date >= fromIso && expense.date <= toIso).map((expense) => expense.amount));
+
+const PACE_LOOKBACK_DAYS = 7;
+
+/**
+ * Rolling average daily spend over the last `PACE_LOOKBACK_DAYS` calendar days (including today).
+ * If that window has no spend but the month-to-date total is non-zero, fall back to MTD / day-of-month.
+ */
+const getAvgDailySpendForProjection = (expenses: Expense[], todayIso: string, currentMonthSpend: number) => {
+  const fromIso = addDays(todayIso, -(PACE_LOOKBACK_DAYS - 1));
+  const sumLastWindow = sumExpensesInInclusiveRange(expenses, fromIso, todayIso);
+  let avgDaily = sumLastWindow / PACE_LOOKBACK_DAYS;
+  if (avgDaily === 0 && currentMonthSpend > 0) {
+    const dayOfMonth = Number(todayIso.slice(8, 10));
+    avgDaily = currentMonthSpend / Math.max(1, dayOfMonth);
+  }
+  return avgDaily;
+};
+
+const getRemainingCalendarDaysInMonthAfterToday = (todayIso: string) => {
+  const [y, m, d] = todayIso.split("-").map(Number);
+  const daysInMonth = new Date(y, m, 0).getDate();
+  return Math.max(0, daysInMonth - d);
+};
+
 const getMonthRange = (fromIso: string, toIso: string) => {
   const [fromYear, fromMonth] = fromIso.slice(0, 7).split("-").map(Number);
   const [toYear, toMonth] = toIso.slice(0, 7).split("-").map(Number);
@@ -63,7 +90,11 @@ const lastDayOfPreviousCalendarMonth = (todayIso: string): string => {
 export const computeGoalForecast = ({ goal, expenses, asOfIsoDate }: ForecastInputs): ForecastResult => {
   const todayIso = asOfIsoDate ?? getIsoDate();
   const currentMonthSpend = getCurrentMonthSpend(expenses, todayIso);
-  const monthlySavingsRate = goal.targetExpense - currentMonthSpend;
+  const avgDailyRecent = getAvgDailySpendForProjection(expenses, todayIso, currentMonthSpend);
+  const remainingDaysInMonth = getRemainingCalendarDaysInMonthAfterToday(todayIso);
+  const projectedEndOfMonthSpend = currentMonthSpend + avgDailyRecent * remainingDaysInMonth;
+  /** Expected surplus vs monthly spending cap at month-end if recent daily pace continues (can be negative). */
+  const monthlySavingsRate = goal.targetExpense - projectedEndOfMonthSpend;
   const savingsThroughIso = lastDayOfPreviousCalendarMonth(todayIso);
   const trackedMonths = getMonthRange(goal.createdAt, savingsThroughIso);
   const monthSpend = expenses.reduce<Record<string, number>>((acc, expense) => {
@@ -93,7 +124,7 @@ export const computeGoalForecast = ({ goal, expenses, asOfIsoDate }: ForecastInp
         projectedEta: todayIso,
         isOnTrack: true,
         shortfallAmount: 0,
-        paceWindowDays: 30,
+        paceWindowDays: PACE_LOOKBACK_DAYS,
       },
     };
   }
@@ -115,7 +146,7 @@ export const computeGoalForecast = ({ goal, expenses, asOfIsoDate }: ForecastInp
         projectedEta: null,
         isOnTrack: false,
         shortfallAmount: remainingAmount,
-        paceWindowDays: 30,
+        paceWindowDays: PACE_LOOKBACK_DAYS,
       },
     };
   }
@@ -144,7 +175,7 @@ export const computeGoalForecast = ({ goal, expenses, asOfIsoDate }: ForecastInp
       projectedEta,
       isOnTrack,
       shortfallAmount,
-      paceWindowDays: 30,
+      paceWindowDays: PACE_LOOKBACK_DAYS,
     },
   };
 };

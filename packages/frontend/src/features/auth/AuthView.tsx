@@ -14,7 +14,7 @@ type AuthViewProps = {
 };
 
 export const AuthView = ({ onAuthenticated }: AuthViewProps) => {
-  const [mode, setMode] = useState<"login" | "register">("register");
+  const [mode, setMode] = useState<"login" | "register">("login");
   const [form, setForm] = useState({
     name: "",
     email: "",

@@ -75,6 +75,12 @@ export const getCurrentMonthExpenses = (expenses: Expense[]) => {
   return expenses.filter((expense) => expense.date.startsWith(currentMonth));
 };
 
+/** Calendar month-to-date: total spend / day of month (local), same basis as {@link getCurrentMonthExpenses}. */
+export const getAverageDailySpendThisMonth = (currentMonthTotalSpend: number) => {
+  const day = new Date().getDate();
+  return day > 0 ? currentMonthTotalSpend / day : 0;
+};
+
 export const getSpendInCalendarMonth = (expenses: Expense[], monthOffset: number) => {
   const reference = new Date();
   const target = new Date(reference.getFullYear(), reference.getMonth() + monthOffset, 1);

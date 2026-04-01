@@ -100,7 +100,7 @@ const GoalCardBody = ({ goal, onOpenGoalDialog, onCompleteGoal }: GoalCardBodyPr
       <Box sx={(theme) => ({ borderRadius: RADIUS_INNER, p: 1.5, bgcolor: alpha(theme.palette.common.white, 0.04), border: `1px solid ${alpha(theme.palette.common.white, 0.06)}` })}>
         <Typography variant="body2" sx={{ lineHeight: 1.55 }}>
           {isReached
-            ? `You hit your goal. Saved an average of ${formatCurrency(goal.forecast.monthlySavingsRate)}/mo. Ready to start your next goal?`
+            ? "You hit your goal. Ready to start your next goal?"
             : isAlmost
               ? `You're ${formatCurrency(Math.max(goal.targetAmount - goal.currentAmount, 0))} away — about one more month at your current pace.`
               : goal.aiEtaInsight}

@@ -1,7 +1,13 @@
 import type { Expense, Goal } from "@expense-tracker/shared";
 import { Stack, Typography } from "@mui/material";
 
-import { type CategoryPaletteEntry, formatSpendVsPriorMonth, getCurrentMonthExpenses, getSpendInCalendarMonth } from "@/lib/expense-ui";
+import {
+  type CategoryPaletteEntry,
+  formatSpendVsPriorMonth,
+  getAverageDailySpendThisMonth,
+  getCurrentMonthExpenses,
+  getSpendInCalendarMonth,
+} from "@/lib/expense-ui";
 import { sectionLabelSx } from "@/theme/ui";
 import { DashboardGoalCard } from "@/features/dashboard/components/DashboardGoalCard";
 import { MonthStatCards } from "@/features/dashboard/components/MonthStatCards";
@@ -31,6 +37,7 @@ export const DashboardView = ({
 }: DashboardViewProps) => {
   const currentMonthExpenses = getCurrentMonthExpenses(expenses);
   const spent = currentMonthExpenses.reduce((sum, expense) => sum + expense.amount, 0);
+  const avgDailyThisMonth = getAverageDailySpendThisMonth(spent);
   const priorMonthSpend = getSpendInCalendarMonth(expenses, -1);
   const spendVsPriorMonthNote = formatSpendVsPriorMonth(spent, priorMonthSpend);
   const expensesCount = currentMonthExpenses.length;
@@ -44,6 +51,7 @@ export const DashboardView = ({
         <Typography sx={(theme) => sectionLabelSx(theme)}>This month</Typography>
 
         <MonthStatCards
+          avgDailyThisMonth={avgDailyThisMonth}
           expensesCount={expensesCount}
           goal={goal}
           spendVsPriorMonthNote={spendVsPriorMonthNote}

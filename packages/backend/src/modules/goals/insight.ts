@@ -18,7 +18,9 @@ export const buildGoalEtaInsight = (seed: InsightSeed): string => {
 
   if (seed.status === "on_track") {
     const monthlyText =
-      seed.monthlySavingsRate >= 0 ? `saving about $${seed.monthlySavingsRate.toFixed(0)}/month` : `overspending by about $${Math.abs(seed.monthlySavingsRate).toFixed(0)}/month`;
+      seed.monthlySavingsRate >= 0
+        ? `on track to finish about $${seed.monthlySavingsRate.toFixed(0)} under your monthly target`
+        : `on track to exceed your monthly target by about $${Math.abs(seed.monthlySavingsRate).toFixed(0)}`;
     if (!seed.targetDate) {
       return `You're ${monthlyText}. At this pace you'll hit your goal by ${seed.projectedEta}.`;
     }
@@ -31,7 +33,9 @@ export const buildGoalEtaInsight = (seed: InsightSeed): string => {
       : "";
 
   const monthlyText =
-    seed.monthlySavingsRate >= 0 ? `saving about $${seed.monthlySavingsRate.toFixed(0)}/month` : `overspending by about $${Math.abs(seed.monthlySavingsRate).toFixed(0)}/month`;
+    seed.monthlySavingsRate >= 0
+      ? `on track to finish about $${seed.monthlySavingsRate.toFixed(0)} under your monthly target`
+      : `on track to exceed your monthly target by about $${Math.abs(seed.monthlySavingsRate).toFixed(0)}`;
 
   if (!seed.targetDate) {
     return `You're ${monthlyText}. At this pace you'll hit your goal by ${seed.projectedEta ?? "a later date than planned"}.${categoryPart}`;
