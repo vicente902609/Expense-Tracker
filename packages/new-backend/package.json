@@ -5,6 +5,7 @@
   "scripts": {
     "build": "tsc --noEmit",
     "deploy": "serverless deploy",
+    "seed": "ts-node src/scripts/seed-categories.ts",
     "test": "jest"
   },
   "dependencies": {
@@ -31,6 +32,7 @@
     "serverless-esbuild": "^1.52.1",
     "serverless-offline": "^13.7.0",
     "ts-jest": "^29.1.5",
+    "ts-node": "^10.9.2",
     "typescript": "^5.4.5"
   }
 }

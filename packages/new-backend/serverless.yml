@@ -60,6 +60,14 @@ functions:
           method: POST
           path: /auth/logout
 
+  # ── Categories ────────────────────────────────────────────────────────────
+  categoriesList:
+    handler: src/handlers/categories/list.handler
+    events:
+      - httpApi:
+          method: GET
+          path: /categories
+
 custom:
   esbuild:
     bundle: true

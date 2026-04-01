@@ -44,6 +44,15 @@
 | `SK` | `CAT#<categoryId>` |
 | attrs | `categoryId`, `name`, `color`, `createdAt` |
 
+**Predefined Category** *(seeded once at deploy time, never mutated by users)*
+| Attribute | Value |
+|---|---|
+| `PK` | `CATEGORY#PREDEFINED` |
+| `SK` | `CAT#<categoryId>` |
+| attrs | `categoryId`, `name`, `color`, `createdAt` |
+
+Predefined items are written by a one-shot seed script (`scripts/seed-categories.ts`) run as a Serverless deployment hook or standalone `ts-node` invocation. The 13 built-in names (`Food`, `Transport`, `Housing`, `Utilities`, `Entertainment`, `Health`, `Shopping`, `Travel`, `Education`, `Subscriptions`, `Other`, …) are the source of truth; the seed script uses `BatchWriteItem` with `ConditionExpression: attribute_not_exists(PK)` so re-running is idempotent.
+
 **Expense**
 | Attribute | Value |
 |---|---|
@@ -64,14 +73,15 @@
 | 1 | Get user by ID | `GetItem PK=USER#<id>, SK=METADATA` |
 | 2 | Get user by email (login) | `Query GSI1 GSI1PK=EMAIL#<email>` |
 | 3 | Validate/delete refresh token | `GetItem` / `DeleteItem PK=USER#<id>, SK=TOKEN#<tokenId>` |
-| 4 | List custom categories | `Query PK=USER#<id>, SK begins_with CAT#` |
-| 5 | CRUD single category | `GetItem`/`PutItem`/`UpdateItem`/`DeleteItem PK=USER#<id>, SK=CAT#<catId>` |
-| 6 | CRUD single expense | `GetItem`/`PutItem`/`UpdateItem`/`DeleteItem PK=USER#<id>, SK=EXP#<expId>` |
-| 7 | List all expenses for user | `Query PK=USER#<id>, SK begins_with EXP#` |
-| 8 | List expenses in date range | `Query GSI2 GSI2PK=USER#<id>, GSI2SK between DATE#<start> and DATE#<end>~` |
-| 9 | List expenses by category | `Query GSI3 GSI3PK=USER#<id>#CAT#<catId>` |
-| 10 | List expenses by category + date range | `Query GSI3` + `GSI3SK` range filter |
-| 11 | Monthly spending totals | `Query GSI2 GSI2PK=USER#<id>, GSI2SK begins_with DATE#<YYYY-MM>` |
+| 4 | List predefined categories | `Query PK=CATEGORY#PREDEFINED, SK begins_with CAT#` |
+| 5 | List custom categories | `Query PK=USER#<id>, SK begins_with CAT#` |
+| 6 | CRUD single category | `GetItem`/`PutItem`/`UpdateItem`/`DeleteItem PK=USER#<id>, SK=CAT#<catId>` |
+| 7 | CRUD single expense | `GetItem`/`PutItem`/`UpdateItem`/`DeleteItem PK=USER#<id>, SK=EXP#<expId>` |
+| 8 | List all expenses for user | `Query PK=USER#<id>, SK begins_with EXP#` |
+| 9 | List expenses in date range | `Query GSI2 GSI2PK=USER#<id>, GSI2SK between DATE#<start> and DATE#<end>~` |
+| 10 | List expenses by category | `Query GSI3 GSI3PK=USER#<id>#CAT#<catId>` |
+| 11 | List expenses by category + date range | `Query GSI3` + `GSI3SK` range filter |
+| 12 | Monthly spending totals | `Query GSI2 GSI2PK=USER#<id>, GSI2SK begins_with DATE#<YYYY-MM>` |
 
 ---
 
@@ -84,8 +94,15 @@
 - `POST /auth/logout` — delete refresh token *(requires JWT)*
 
 **Categories** *(all require JWT)*
-- `GET /categories` — predefined (hardcoded) + user's custom categories
-- `POST /categories` — create custom category
+- `GET /categories` — returns predefined categories (queried from DynamoDB `PK=CATEGORY#PREDEFINED`) + authenticated user's custom categories (`PK=USER#<id>`) as two separate arrays:
+  ```json
+  {
+    "predefined": [{ "categoryId": "...", "name": "Food", "color": "#..." }],
+    "custom":     [{ "categoryId": "...", "name": "...", "color": "...", "createdAt": "..." }]
+  }
+  ```
+  Both queries run in parallel (`Promise.all`). Predefined items are seeded at deploy time and never user-specific.
+- `POST /categories` — create custom category; body: `{ name* (max 50 chars), color* (hex e.g. #ff5733) }`; returns created `{ categoryId, name, color, createdAt }`
 - `PUT /categories/{categoryId}` — update custom category
 - `DELETE /categories/{categoryId}` — delete custom category
 
@@ -107,7 +124,7 @@
 Each handler is a thin entry point — parses input, calls service, returns HTTP response.
 
 ```
-packages/backend/src/
+packages/new-backend/src/
   handlers/
     auth/          register.ts  login.ts  refresh.ts  logout.ts
     categories/    list.ts  create.ts  update.ts  delete.ts
@@ -120,6 +137,7 @@ packages/backend/src/
   middleware/      auth.ts (JWT Middy)  error.ts (centralised error handler)
   models/          user.ts  expense.ts  category.ts  common.ts
   lib/             dynamo.ts  jwt.ts  response.ts  validation.ts (Zod)
+  scripts/         seed-categories.ts
   serverless.yml   package.json  tsconfig.json  jest.config.ts
 ```
 
@@ -151,15 +169,16 @@ packages/backend/src/
 
 ## Relevant Files to Create
 
-- `packages/backend/serverless.yml` — provider, functions (16 entries), DynamoDB resource with all GSIs, IAM, env vars
-- `packages/backend/src/lib/dynamo.ts` — singleton `DynamoDBDocumentClient`
-- `packages/backend/src/repositories/*.ts` — all DynamoDB queries
-- `packages/backend/src/services/*.ts` — business logic
-- `packages/backend/src/handlers/**/*.ts` — 16 thin Lambda handlers
-- `packages/backend/src/middleware/auth.ts` — Middy JWT middleware
-- `packages/backend/src/models/*.ts` — TypeScript interfaces
-- `packages/backend/.env.example` — `JWT_SECRET`, `REFRESH_TOKEN_SECRET`, `DYNAMODB_TABLE_NAME`, `AWS_REGION`
-- `packages/backend/tsconfig.json`, `jest.config.ts`, `package.json`
+- `packages/new-backend/serverless.yml` — provider, functions (16 entries), DynamoDB resource with all GSIs, IAM, env vars
+- `packages/new-backend/src/lib/dynamo.ts` — singleton `DynamoDBDocumentClient`
+- `packages/new-backend/src/repositories/*.ts` — all DynamoDB queries
+- `packages/new-backend/src/services/*.ts` — business logic
+- `packages/new-backend/src/handlers/**/*.ts` — 16 thin Lambda handlers
+- `packages/new-backend/src/middleware/auth.ts` — Middy JWT middleware
+- `packages/new-backend/src/models/*.ts` — TypeScript interfaces
+- `packages/new-backend/src/scripts/seed-categories.ts` — one-shot `BatchWriteItem` script seeding 13 predefined category items under `PK=CATEGORY#PREDEFINED`; idempotent (condition: `attribute_not_exists(PK)`)
+- `packages/new-backend/.env.example` — `JWT_SECRET`, `REFRESH_TOKEN_SECRET`, `DYNAMODB_TABLE_NAME`, `AWS_REGION`
+- `packages/new-backend/tsconfig.json`, `jest.config.ts`, `package.json`
 
 ---
 
@@ -169,8 +188,10 @@ packages/backend/src/
 2. `eslint --fix src` — zero lint warnings
 3. `pnpm test` — unit tests for all services + repositories pass
 4. `serverless offline` — all 16 routes respond correctly locally
-5. Manual test: register → login → create category → create expense → list with date filter → check reports endpoint
-6. `serverless deploy --stage dev` — successful AWS deployment, API Gateway URL works end-to-end
+5. Run `pnpm seed` (in `packages/new-backend`) — 13 predefined category items written to DynamoDB; re-run is a no-op
+6. Manual test: `GET /categories` → `predefined` array contains 13 items, `custom` array is empty for a new user
+7. Manual test: register → login → create category → create expense → list with date filter → check reports endpoint
+8. `serverless deploy --stage dev` — successful AWS deployment, API Gateway URL works end-to-end
 
 ---
 
