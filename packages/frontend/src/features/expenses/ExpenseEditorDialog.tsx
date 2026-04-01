@@ -17,9 +17,9 @@ import { alpha } from "@mui/material/styles";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import AutoAwesomeRoundedIcon from "@mui/icons-material/AutoAwesomeRounded";
 
-import { getCategoryIcon } from "../../lib/category-icons.js";
-import { getCategoryColor } from "../../lib/expense-ui.js";
-import { useExpenseEditor } from "./hooks/use-expense-editor.js";
+import { getCategoryIcon } from "@/lib/category-icons";
+import { getCategoryColor } from "@/lib/expense-ui";
+import { useExpenseEditor } from "@/features/expenses/hooks/use-expense-editor";
 
 type ExpenseEditorDialogProps = {
   availableCategories: string[];

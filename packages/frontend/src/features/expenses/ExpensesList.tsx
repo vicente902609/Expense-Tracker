@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button, Card, CardContent, Divider, List, ListItem, ListItemText, Stack, TextField, Typography } from "@mui/material";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { deleteExpense, listExpenses, updateExpense } from "../../api/expenses.js";
+import { deleteExpense, listExpenses, updateExpense } from "@/api/expenses";
 
 export const ExpensesList = () => {
   const queryClient = useQueryClient();

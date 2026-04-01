@@ -19,8 +19,8 @@ import {
   isValidIsoRange,
   type DateFilterKind,
   type DateFilterScope,
-} from "../lib/date-filter.js";
-import { sectionLabelSx } from "../theme/ui.js";
+} from "@/lib/date-filter";
+import { sectionLabelSx } from "@/theme/ui";
 
 export type DateFilterLabels = {
   today?: string;

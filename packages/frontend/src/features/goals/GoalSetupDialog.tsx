@@ -5,7 +5,7 @@ import { alpha, useTheme } from "@mui/material/styles";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { createGoal, updateGoal } from "../../api/goals.js";
+import { createGoal, updateGoal } from "@/api/goals";
 
 type GoalSetupDialogProps = {
   existingGoal?: Goal;

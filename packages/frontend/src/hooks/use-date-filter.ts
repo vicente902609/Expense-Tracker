@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 
-import { getRangeForKind, type DateFilterKind, type DateFilterScope } from "../lib/date-filter.js";
+import { getRangeForKind, type DateFilterKind, type DateFilterScope } from "@/lib/date-filter";
 
 export type { DateFilterKind, DateFilterScope };
 

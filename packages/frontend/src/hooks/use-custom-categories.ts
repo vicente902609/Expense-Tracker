@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { addCustomCategory, deleteCustomCategory, listCustomCategories, renameCustomCategory } from "../api/categories.js";
+import { addCustomCategory, deleteCustomCategory, listCustomCategories, renameCustomCategory } from "@/api/categories";
 
 export const useCustomCategories = () => {
   const queryClient = useQueryClient();

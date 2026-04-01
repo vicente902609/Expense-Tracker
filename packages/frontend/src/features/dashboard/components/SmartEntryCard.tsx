@@ -2,7 +2,7 @@ import { alpha } from "@mui/material/styles";
 import { Box, Button, Stack, Typography } from "@mui/material";
 import AutoAwesomeRoundedIcon from "@mui/icons-material/AutoAwesomeRounded";
 
-import { radiusInner, surfaceCard } from "../../../theme/ui.js";
+import { radiusInner, surfaceCard } from "@/theme/ui";
 
 type SmartEntryCardProps = {
   onOpenSmartEntry: () => void;

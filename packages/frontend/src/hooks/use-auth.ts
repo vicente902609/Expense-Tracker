@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { User } from "@expense-tracker/shared";
 
-import { authStorage } from "../lib/storage.js";
+import { authStorage } from "@/lib/storage";
 
 export const useAuth = () => {
   const [token, setToken] = useState<string | null>(() => authStorage.getToken());

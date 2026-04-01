@@ -1,6 +1,6 @@
-import { AuthView } from "../features/auth/AuthView.js";
-import { TrackerShell } from "../features/app/TrackerShell.js";
-import { useAuth } from "../hooks/use-auth.js";
+import { AuthView } from "@/features/auth/AuthView";
+import { TrackerShell } from "@/features/app/TrackerShell";
+import { useAuth } from "@/hooks/use-auth";
 
 export const App = () => {
   const auth = useAuth();

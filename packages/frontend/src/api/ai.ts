@@ -1,7 +1,7 @@
 import type { ParsedExpense } from "@expense-tracker/shared";
 
-import { apiRequest } from "./client.js";
-import { formatLocalIsoDate } from "../lib/expense-ui.js";
+import { apiRequest } from "@/api/client";
+import { formatLocalIsoDate } from "@/lib/expense-ui";
 
 export const parseExpenseText = (text: string) =>
   apiRequest<ParsedExpense>("/ai/parse-expense", {

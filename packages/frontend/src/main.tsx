@@ -3,8 +3,8 @@ import ReactDOM from "react-dom/client";
 import { CssBaseline, ThemeProvider } from "@mui/material";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
-import { App } from "./app/App.js";
-import { theme } from "./theme/theme.js";
+import { App } from "@/app/App";
+import { theme } from "@/theme/theme";
 
 const queryClient = new QueryClient();
 

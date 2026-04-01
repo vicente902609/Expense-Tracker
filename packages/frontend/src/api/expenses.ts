@@ -1,6 +1,6 @@
 import type { Expense, ExpenseInput } from "@expense-tracker/shared";
 
-import { apiRequest } from "./client.js";
+import { apiRequest } from "@/api/client";
 
 export const listExpenses = () => apiRequest<Expense[]>("/expenses");
 export const createExpense = (payload: ExpenseInput) => apiRequest<Expense>("/expenses", { method: "POST", body: payload });

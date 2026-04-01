@@ -4,7 +4,7 @@ import { Alert, Box, Button, Dialog, DialogContent, IconButton, Radio, Stack, Te
 import { alpha, useTheme } from "@mui/material/styles";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 
-import { formatCurrency } from "../../lib/expense-ui.js";
+import { formatCurrency } from "@/lib/expense-ui";
 
 type NextGoalChoice = "spent" | "carry" | "partial";
 

@@ -4,8 +4,8 @@ import { Alert, Box, Button, Container, Stack, TextField, Typography } from "@mu
 import CurrencyExchangeRoundedIcon from "@mui/icons-material/CurrencyExchangeRounded";
 import { useMutation } from "@tanstack/react-query";
 
-import { login, register } from "../../api/auth.js";
-import { appShellGradient, RADIUS_INNER, RADIUS_SHELL } from "../../theme/ui.js";
+import { login, register } from "@/api/auth";
+import { appShellGradient, RADIUS_INNER, RADIUS_SHELL } from "@/theme/ui";
 
 type AuthViewProps = {
   onAuthenticated: (token: string, user: { id: string; email: string; name: string; createdAt: string }) => void;

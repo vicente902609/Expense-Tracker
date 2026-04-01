@@ -1,4 +1,4 @@
-import { apiRequest } from "./client.js";
+import { apiRequest } from "@/api/client";
 
 export type CategoriesResponse = {
   custom: string[];

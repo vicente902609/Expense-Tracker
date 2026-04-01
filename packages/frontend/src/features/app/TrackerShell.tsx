@@ -9,18 +9,18 @@ import CategoryRoundedIcon from "@mui/icons-material/CategoryRounded";
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
 import { useQuery } from "@tanstack/react-query";
 
-import { listExpenses } from "../../api/expenses.js";
-import { listGoals } from "../../api/goals.js";
-import { useCustomCategories } from "../../hooks/use-custom-categories.js";
-import { predefinedCategories } from "../../lib/expense-ui.js";
-import { appShellGradient, RADIUS_SHELL } from "../../theme/ui.js";
-import { CategoriesView } from "../categories/CategoriesView.js";
-import { DashboardView } from "../dashboard/DashboardView.js";
-import { ExpenseEditorDialog } from "../expenses/ExpenseEditorDialog.js";
-import { ExpensesView } from "../expenses/ExpensesView.js";
-import { GoalCompletionDialog } from "../goals/GoalCompletionDialog.js";
-import { GoalSetupDialog } from "../goals/GoalSetupDialog.js";
-import { ReportsView } from "../reports/ReportsView.js";
+import { listExpenses } from "@/api/expenses";
+import { listGoals } from "@/api/goals";
+import { useCustomCategories } from "@/hooks/use-custom-categories";
+import { predefinedCategories } from "@/lib/expense-ui";
+import { appShellGradient, RADIUS_SHELL } from "@/theme/ui";
+import { CategoriesView } from "@/features/categories/CategoriesView";
+import { DashboardView } from "@/features/dashboard/DashboardView";
+import { ExpenseEditorDialog } from "@/features/expenses/ExpenseEditorDialog";
+import { ExpensesView } from "@/features/expenses/ExpensesView";
+import { GoalCompletionDialog } from "@/features/goals/GoalCompletionDialog";
+import { GoalSetupDialog } from "@/features/goals/GoalSetupDialog";
+import { ReportsView } from "@/features/reports/ReportsView";
 
 type TrackerShellProps = {
   onLogout: () => void;

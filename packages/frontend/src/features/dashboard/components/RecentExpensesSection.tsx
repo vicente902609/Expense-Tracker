@@ -3,8 +3,8 @@ import { alpha } from "@mui/material/styles";
 import { Box, Button, Stack, Typography } from "@mui/material";
 import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
 
-import { formatCurrency, formatShortDate, getCategoryColor } from "../../../lib/expense-ui.js";
-import { listRowInteractive, sectionLabelSx, surfaceCard } from "../../../theme/ui.js";
+import { formatCurrency, formatShortDate, getCategoryColor } from "@/lib/expense-ui";
+import { listRowInteractive, sectionLabelSx, surfaceCard } from "@/theme/ui";
 
 type RecentExpensesSectionProps = {
   expenses: Expense[];

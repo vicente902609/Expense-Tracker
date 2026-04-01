@@ -1,5 +1,5 @@
-import { env } from "../lib/env.js";
-import { authStorage } from "../lib/storage.js";
+import { env } from "@/lib/env";
+import { authStorage } from "@/lib/storage";
 
 type RequestOptions = {
   body?: unknown;

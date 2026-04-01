@@ -2,10 +2,10 @@ import type { Goal } from "@expense-tracker/shared";
 import { alpha } from "@mui/material/styles";
 import { Box, Button, LinearProgress, Stack, Typography } from "@mui/material";
 
-import { formatCurrency, formatShortDate, getGoalProgress } from "../../../lib/expense-ui.js";
-import { RADIUS_CHIP, RADIUS_INNER, sectionLabelSx, surfaceCard } from "../../../theme/ui.js";
+import { formatCurrency, formatShortDate, getGoalProgress } from "@/lib/expense-ui";
+import { RADIUS_CHIP, RADIUS_INNER, sectionLabelSx, surfaceCard } from "@/theme/ui";
 
-import { getGoalCardStatus } from "./goal-card-status.js";
+import { getGoalCardStatus } from "@/features/dashboard/components/goal-card-status";
 
 type DashboardGoalCardProps = {
   goal: Goal | undefined;

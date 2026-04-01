@@ -2,9 +2,9 @@ import { useState } from "react";
 import type { Expense } from "@expense-tracker/shared";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { parseExpenseText } from "../../../api/ai.js";
-import { createExpense, deleteExpense, updateExpense } from "../../../api/expenses.js";
-import { formatLocalIsoDate } from "../../../lib/expense-ui.js";
+import { parseExpenseText } from "@/api/ai";
+import { createExpense, deleteExpense, updateExpense } from "@/api/expenses";
+import { formatLocalIsoDate } from "@/lib/expense-ui";
 
 export type ExpenseFormState = {
   amount: string;

@@ -2,8 +2,8 @@ import type { Goal } from "@expense-tracker/shared";
 import { alpha } from "@mui/material/styles";
 import { Box, Typography } from "@mui/material";
 
-import { formatCurrency } from "../../../lib/expense-ui.js";
-import { RADIUS_DENSE } from "../../../theme/ui.js";
+import { formatCurrency } from "@/lib/expense-ui";
+import { RADIUS_DENSE } from "@/theme/ui";
 
 type MonthStatCardsProps = {
   spent: number;

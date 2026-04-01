@@ -3,9 +3,9 @@ import type { Expense } from "@expense-tracker/shared";
 import { alpha } from "@mui/material/styles";
 import { Box, Stack, Tooltip, Typography } from "@mui/material";
 
-import { DateFilter } from "../../components/DateFilter.js";
-import { useDateFilter } from "../../hooks/use-date-filter.js";
-import { daysInclusiveInRange, formatDateRangeLabel, type DateFilterKind } from "../../lib/date-filter.js";
+import { DateFilter } from "@/components/DateFilter";
+import { useDateFilter } from "@/hooks/use-date-filter";
+import { daysInclusiveInRange, formatDateRangeLabel, type DateFilterKind } from "@/lib/date-filter";
 import {
   type ChartSeriesPoint,
   formatCurrency,
@@ -14,8 +14,8 @@ import {
   getDailySeriesForRange,
   getMonthlySeriesForRange,
   getWeeklySeriesForRange,
-} from "../../lib/expense-ui.js";
-import { RADIUS_DENSE, sectionLabelSx, surfaceCard } from "../../theme/ui.js";
+} from "@/lib/expense-ui";
+import { RADIUS_DENSE, sectionLabelSx, surfaceCard } from "@/theme/ui";
 
 type ReportsViewProps = {
   expenses: Expense[];

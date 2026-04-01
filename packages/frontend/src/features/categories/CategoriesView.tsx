@@ -2,10 +2,10 @@ import { useState } from "react";
 import type { Expense } from "@expense-tracker/shared";
 import { alpha } from "@mui/material/styles";
 import { Alert, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Stack, TextField, Typography } from "@mui/material";
-import { useCustomCategories } from "../../hooks/use-custom-categories.js";
-import { getCategoryIcon } from "../../lib/category-icons.js";
-import { getCategoryColor, predefinedCategories } from "../../lib/expense-ui.js";
-import { listRowInteractive, radiusInner, sectionLabelSx, surfaceCard } from "../../theme/ui.js";
+import { useCustomCategories } from "@/hooks/use-custom-categories";
+import { getCategoryIcon } from "@/lib/category-icons";
+import { getCategoryColor, predefinedCategories } from "@/lib/expense-ui";
+import { listRowInteractive, radiusInner, sectionLabelSx, surfaceCard } from "@/theme/ui";
 
 type CategoriesViewProps = {
   expenses: Expense[];

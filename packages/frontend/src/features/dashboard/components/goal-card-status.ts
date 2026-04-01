@@ -1,6 +1,6 @@
 import type { Goal } from "@expense-tracker/shared";
 
-import { formatShortDate, getGoalProgress } from "../../../lib/expense-ui.js";
+import { formatShortDate, getGoalProgress } from "@/lib/expense-ui";
 
 export type GoalChipPalette = "success" | "warning" | "secondary";
 

@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import type { Expense } from "@expense-tracker/shared";
 
-import { useDateFilter } from "../../../hooks/use-date-filter.js";
+import { useDateFilter } from "@/hooks/use-date-filter";
 
 export const useExpenseFilters = (expenses: Expense[]) => {
   const [selectedCategory, setSelectedCategory] = useState("All");

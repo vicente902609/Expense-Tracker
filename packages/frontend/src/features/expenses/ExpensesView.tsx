@@ -3,10 +3,10 @@ import { alpha } from "@mui/material/styles";
 import { Box, Button, Chip, Stack, Typography } from "@mui/material";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 
-import { DateFilter } from "../../components/DateFilter.js";
-import { formatCurrency, formatMonthLabel, formatShortDate, getCategoryColor } from "../../lib/expense-ui.js";
-import { listRowInteractive, sectionLabelSx, surfaceCard } from "../../theme/ui.js";
-import { useExpenseFilters } from "./hooks/use-expense-filters.js";
+import { DateFilter } from "@/components/DateFilter";
+import { formatCurrency, formatMonthLabel, formatShortDate, getCategoryColor } from "@/lib/expense-ui";
+import { listRowInteractive, sectionLabelSx, surfaceCard } from "@/theme/ui";
+import { useExpenseFilters } from "@/features/expenses/hooks/use-expense-filters";
 
 type ExpensesViewProps = {
   availableCategories: string[];

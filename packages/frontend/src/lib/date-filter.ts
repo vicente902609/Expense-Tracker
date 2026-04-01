@@ -1,4 +1,4 @@
-import { formatLocalIsoDate, formatShortDate } from "./expense-ui.js";
+import { formatLocalIsoDate, formatShortDate } from "@/lib/expense-ui";
 
 export type DateFilterKind = "today" | "week" | "month" | "range";
 
