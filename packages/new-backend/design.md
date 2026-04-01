@@ -1,0 +1,181 @@
+# Plan: Backend API — Expense Tracker
+
+**TL;DR:** Design a RESTful backend for the Personal Expense Tracker using Serverless Framework (16 Lambdas, one per route), a DynamoDB single-table design with 3 GSIs covering all access patterns, and a layered architecture (handler → service → repository).
+
+---
+
+## DynamoDB Single-Table Design
+
+**Table:** `expense-tracker-{stage}`  
+**Keys:** `PK` (String), `SK` (String)
+
+### GSIs
+
+| Index | Hash Key | Sort Key | Purpose |
+|---|---|---|---|
+| `GSI1-EmailIndex` | `GSI1PK` | `GSI1SK` | Email → userId lookup (login) |
+| `GSI2-UserExpenseDateIndex` | `GSI2PK` | `GSI2SK` | Expenses by user within date range |
+| `GSI3-UserCategoryDateIndex` | `GSI3PK` | `GSI3SK` | Expenses by user + category + date |
+
+---
+
+### Item Schemas
+
+**User**
+| Attribute | Value |
+|---|---|
+| `PK` | `USER#<userId>` |
+| `SK` | `METADATA` |
+| `GSI1PK` | `EMAIL#<email>` |
+| `GSI1SK` | `USER#<userId>` |
+| attrs | `userId`, `name`, `email`, `passwordHash`, `createdAt`, `updatedAt` |
+
+**RefreshToken** *(DynamoDB TTL on `expiresAt`)*
+| Attribute | Value |
+|---|---|
+| `PK` | `USER#<userId>` |
+| `SK` | `TOKEN#<tokenId>` |
+| attrs | `tokenId`, `expiresAt` (Unix epoch), `createdAt` |
+
+**Custom Category**
+| Attribute | Value |
+|---|---|
+| `PK` | `USER#<userId>` |
+| `SK` | `CAT#<categoryId>` |
+| attrs | `categoryId`, `name`, `color`, `createdAt` |
+
+**Expense**
+| Attribute | Value |
+|---|---|
+| `PK` | `USER#<userId>` |
+| `SK` | `EXP#<expenseId>` |
+| `GSI2PK` | `USER#<userId>` |
+| `GSI2SK` | `DATE#<YYYY-MM-DD>#<expenseId>` |
+| `GSI3PK` | `USER#<userId>#CAT#<categoryId>` |
+| `GSI3SK` | `DATE#<YYYY-MM-DD>#<expenseId>` |
+| attrs | `expenseId`, `amount`, `description`, `categoryId`, `date`, `createdAt`, `updatedAt` |
+
+---
+
+### Access Patterns Covered
+
+| # | Pattern | DynamoDB Operation |
+|---|---|---|
+| 1 | Get user by ID | `GetItem PK=USER#<id>, SK=METADATA` |
+| 2 | Get user by email (login) | `Query GSI1 GSI1PK=EMAIL#<email>` |
+| 3 | Validate/delete refresh token | `GetItem` / `DeleteItem PK=USER#<id>, SK=TOKEN#<tokenId>` |
+| 4 | List custom categories | `Query PK=USER#<id>, SK begins_with CAT#` |
+| 5 | CRUD single category | `GetItem`/`PutItem`/`UpdateItem`/`DeleteItem PK=USER#<id>, SK=CAT#<catId>` |
+| 6 | CRUD single expense | `GetItem`/`PutItem`/`UpdateItem`/`DeleteItem PK=USER#<id>, SK=EXP#<expId>` |
+| 7 | List all expenses for user | `Query PK=USER#<id>, SK begins_with EXP#` |
+| 8 | List expenses in date range | `Query GSI2 GSI2PK=USER#<id>, GSI2SK between DATE#<start> and DATE#<end>~` |
+| 9 | List expenses by category | `Query GSI3 GSI3PK=USER#<id>#CAT#<catId>` |
+| 10 | List expenses by category + date range | `Query GSI3` + `GSI3SK` range filter |
+| 11 | Monthly spending totals | `Query GSI2 GSI2PK=USER#<id>, GSI2SK begins_with DATE#<YYYY-MM>` |
+
+---
+
+## API Endpoints
+
+**Auth** *(public)*
+- `POST /auth/register` — create account; body: `{ name* (required), email*, password* }`; returns access + refresh tokens + user `{ userId, name, email }`
+- `POST /auth/login` — verify credentials; body: `{ email*, password* }`; returns access + refresh tokens + user `{ userId, name, email }`
+- `POST /auth/refresh` — exchange refresh token for new pair
+- `POST /auth/logout` — delete refresh token *(requires JWT)*
+
+**Categories** *(all require JWT)*
+- `GET /categories` — predefined (hardcoded) + user's custom categories
+- `POST /categories` — create custom category
+- `PUT /categories/{categoryId}` — update custom category
+- `DELETE /categories/{categoryId}` — delete custom category
+
+**Expenses** *(all require JWT; query params: `startDate`, `endDate`, `categoryId`, `limit`, `cursor`)*
+- `GET /expenses`
+- `POST /expenses`
+- `GET /expenses/{expenseId}`
+- `PUT /expenses/{expenseId}`
+- `DELETE /expenses/{expenseId}`
+
+**Reports** *(all require JWT)*
+- `GET /reports/monthly?year=<YYYY>` — spending totals per month
+- `GET /reports/by-category?startDate=&endDate=` — breakdown by category
+
+---
+
+## Lambda Architecture (1 per route = 16 functions)
+
+Each handler is a thin entry point — parses input, calls service, returns HTTP response.
+
+```
+packages/backend/src/
+  handlers/
+    auth/          register.ts  login.ts  refresh.ts  logout.ts
+    categories/    list.ts  create.ts  update.ts  delete.ts
+    expenses/      list.ts  create.ts  get.ts  update.ts  delete.ts
+    reports/       monthly.ts  by-category.ts
+  services/        auth.service.ts  categories.service.ts
+                   expenses.service.ts  reports.service.ts
+  repositories/    user.repository.ts  category.repository.ts
+                   expense.repository.ts
+  middleware/      auth.ts (JWT Middy)  error.ts (centralised error handler)
+  models/          user.ts  expense.ts  category.ts  common.ts
+  lib/             dynamo.ts  jwt.ts  response.ts  validation.ts (Zod)
+  serverless.yml   package.json  tsconfig.json  jest.config.ts
+```
+
+---
+
+## Key Libraries
+
+| Purpose | Library |
+|---|---|
+| DynamoDB client | `@aws-sdk/client-dynamodb` + `@aws-sdk/lib-dynamodb` (v3) |
+| Middleware | `@middy/core`, `@middy/http-json-body-parser`, `@middy/http-error-handler` |
+| JWT | `jsonwebtoken` |
+| Passwords | `bcryptjs` |
+| Validation | `zod` |
+| IDs | `uuid` |
+| Bundling | `serverless` + `serverless-esbuild` |
+| Testing | `jest` + `ts-jest` |
+
+---
+
+## Auth Flow
+
+1. **Register/Login** → bcrypt hash/verify → write User (including `name`) + RefreshToken item → return 15min access JWT (payload: `{ userId, name, email }`) + 7d refresh token (UUID stored in DB with TTL) + user object `{ userId, name, email }`
+2. **Authenticated requests** → Middy middleware reads `Authorization: Bearer <token>` → verifies JWT signature → injects `userId` into handler context
+3. **Refresh** → `GetItem` token → validate expiry → `DeleteItem` old → `PutItem` new → return new pair (rotation prevents replay)
+4. **Logout** → `DeleteItem` refresh token item
+
+---
+
+## Relevant Files to Create
+
+- `packages/backend/serverless.yml` — provider, functions (16 entries), DynamoDB resource with all GSIs, IAM, env vars
+- `packages/backend/src/lib/dynamo.ts` — singleton `DynamoDBDocumentClient`
+- `packages/backend/src/repositories/*.ts` — all DynamoDB queries
+- `packages/backend/src/services/*.ts` — business logic
+- `packages/backend/src/handlers/**/*.ts` — 16 thin Lambda handlers
+- `packages/backend/src/middleware/auth.ts` — Middy JWT middleware
+- `packages/backend/src/models/*.ts` — TypeScript interfaces
+- `packages/backend/.env.example` — `JWT_SECRET`, `REFRESH_TOKEN_SECRET`, `DYNAMODB_TABLE_NAME`, `AWS_REGION`
+- `packages/backend/tsconfig.json`, `jest.config.ts`, `package.json`
+
+---
+
+## Verification Steps
+
+1. `tsc --noEmit` — zero type errors
+2. `eslint --fix src` — zero lint warnings
+3. `pnpm test` — unit tests for all services + repositories pass
+4. `serverless offline` — all 16 routes respond correctly locally
+5. Manual test: register → login → create category → create expense → list with date filter → check reports endpoint
+6. `serverless deploy --stage dev` — successful AWS deployment, API Gateway URL works end-to-end
+
+---
+
+## Further Considerations
+
+1. **Pagination cursor** — `GET /expenses` uses DynamoDB `LastEvaluatedKey` (base64-encoded) as cursor; `limit` defaults to 50. Frontend passes `cursor=<token>` for next page.
+2. **Category deletion guard** — when deleting a custom category, decide whether to reject if expenses reference it, or allow deletion (expenses keep `categoryId` as orphan ref). Recommendation: allow deletion, frontend shows "Unknown" for orphaned refs.
+3. **Report aggregation** — `reports/monthly` and `reports/by-category` aggregate in Lambda (no DynamoDB stream/aggregation pipeline needed at this scale). Fine for free-tier usage.

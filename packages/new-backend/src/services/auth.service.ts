@@ -94,6 +94,7 @@ export const loginUser = async (
   return {
     user: {
       userId: userItem.userId,
+      name: userItem.name,
       email: userItem.email,
       createdAt: userItem.createdAt,
       updatedAt: userItem.updatedAt,
@@ -108,6 +109,7 @@ export const loginUser = async (
 export const registerUser = async (
   email: string,
   password: string,
+  name: string,
 ): Promise<RegisterResult | RegisterError> => {
   const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
   const userId = uuidv4();
@@ -119,6 +121,7 @@ export const registerUser = async (
     GSI1PK: `EMAIL#${email.toLowerCase()}`,
     GSI1SK: `USER#${userId}`,
     userId,
+    name,
     email: email.toLowerCase(),
     passwordHash,
     createdAt: now,
@@ -137,7 +140,7 @@ export const registerUser = async (
   });
 
   return {
-    user: { userId, email: email.toLowerCase(), createdAt: now, updatedAt: now },
+    user: { userId, name, email: email.toLowerCase(), createdAt: now, updatedAt: now },
     tokens: {
       accessToken: signAccessToken(userId),
       refreshToken: signRefreshToken(userId, tokenId),

@@ -5,6 +5,7 @@ export interface UserItem {
   GSI1PK: string;   // EMAIL#<email>
   GSI1SK: string;   // USER#<userId>
   userId: string;
+  name: string;
   email: string;
   passwordHash: string;
   createdAt: string;
@@ -22,6 +23,7 @@ export interface RefreshTokenItem {
 // Domain/API shape (never exposes passwordHash)
 export interface User {
   userId: string;
+  name: string;
   email: string;
   createdAt: string;
   updatedAt: string;
