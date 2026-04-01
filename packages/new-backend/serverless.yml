@@ -86,6 +86,38 @@ functions:
           method: DELETE
           path: /categories/{categoryId}
 
+  # ── Expenses ──────────────────────────────────────────────────────────────
+  expensesList:
+    handler: src/handlers/expenses/list.handler
+    events:
+      - httpApi:
+          method: GET
+          path: /expenses
+  expensesCreate:
+    handler: src/handlers/expenses/create.handler
+    events:
+      - httpApi:
+          method: POST
+          path: /expenses
+  expensesGet:
+    handler: src/handlers/expenses/get.handler
+    events:
+      - httpApi:
+          method: GET
+          path: /expenses/{expenseId}
+  expensesUpdate:
+    handler: src/handlers/expenses/update.handler
+    events:
+      - httpApi:
+          method: PUT
+          path: /expenses/{expenseId}
+  expensesDelete:
+    handler: src/handlers/expenses/delete.handler
+    events:
+      - httpApi:
+          method: DELETE
+          path: /expenses/{expenseId}
+
 custom:
   esbuild:
     bundle: true
