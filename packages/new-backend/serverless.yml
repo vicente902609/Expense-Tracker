@@ -67,6 +67,12 @@ functions:
       - httpApi:
           method: GET
           path: /categories
+  categoriesCreate:
+    handler: src/handlers/categories/create.handler
+    events:
+      - httpApi:
+          method: POST
+          path: /categories
 
 custom:
   esbuild:
