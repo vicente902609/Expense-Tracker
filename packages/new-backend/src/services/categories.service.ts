@@ -2,8 +2,11 @@ import { v4 as uuidv4 } from 'uuid';
 import type { CategoryItem, CustomCategory, PredefinedCategory } from '../models/category';
 import {
   createCategory as createCategoryInDb,
+  deleteCategoryByUser,
+  getCategoryByUser,
   listCustomCategoriesByUser,
   listPredefinedCategories,
+  updateCategoryByUser,
 } from '../repositories/category.repository';
 
 export interface CategoriesResult {
@@ -46,4 +49,24 @@ export const createCategory = async (
 
   await createCategoryInDb(item);
   return { categoryId, name: input.name, color: input.color, createdAt };
+};
+
+export const updateCategory = async (
+  userId: string,
+  categoryId: string,
+  input: { name: string; color: string },
+): Promise<CustomCategory | null> => {
+  const existing = await getCategoryByUser(userId, categoryId);
+  if (!existing) return null;
+
+  const updated = await updateCategoryByUser(userId, categoryId, input);
+  return { categoryId: updated.categoryId, name: updated.name, color: updated.color, createdAt: updated.createdAt };
+};
+
+export const deleteCategory = async (userId: string, categoryId: string): Promise<boolean> => {
+  const existing = await getCategoryByUser(userId, categoryId);
+  if (!existing) return false;
+
+  await deleteCategoryByUser(userId, categoryId);
+  return true;
 };

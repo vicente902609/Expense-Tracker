@@ -73,6 +73,18 @@ functions:
       - httpApi:
           method: POST
           path: /categories
+  categoriesUpdate:
+    handler: src/handlers/categories/update.handler
+    events:
+      - httpApi:
+          method: PUT
+          path: /categories/{categoryId}
+  categoriesDelete:
+    handler: src/handlers/categories/delete.handler
+    events:
+      - httpApi:
+          method: DELETE
+          path: /categories/{categoryId}
 
 custom:
   esbuild:
