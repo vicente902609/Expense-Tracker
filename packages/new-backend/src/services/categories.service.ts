@@ -1,5 +1,7 @@
-import type { CustomCategory, PredefinedCategory } from '../models/category';
+import { v4 as uuidv4 } from 'uuid';
+import type { CategoryItem, CustomCategory, PredefinedCategory } from '../models/category';
 import {
+  createCategory as createCategoryInDb,
   listCustomCategoriesByUser,
   listPredefinedCategories,
 } from '../repositories/category.repository';
@@ -24,4 +26,24 @@ export const listCategories = async (userId: string): Promise<CategoriesResult> 
       createdAt,
     })),
   };
+};
+
+export const createCategory = async (
+  userId: string,
+  input: { name: string; color: string },
+): Promise<CustomCategory> => {
+  const categoryId = uuidv4();
+  const createdAt = new Date().toISOString();
+
+  const item: CategoryItem = {
+    PK: `USER#${userId}`,
+    SK: `CAT#${categoryId}`,
+    categoryId,
+    name: input.name,
+    color: input.color,
+    createdAt,
+  };
+
+  await createCategoryInDb(item);
+  return { categoryId, name: input.name, color: input.color, createdAt };
 };
