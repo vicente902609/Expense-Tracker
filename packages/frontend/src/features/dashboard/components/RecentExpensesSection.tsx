@@ -3,7 +3,7 @@ import { alpha } from "@mui/material/styles";
 import { Box, Button, Stack, Typography } from "@mui/material";
 import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
 
-import { type CategoryPaletteEntry, formatCurrency, formatShortDate, getCategoryColor } from "@/lib/expense-ui";
+import { type CategoryPaletteEntry, formatCurrency, formatShortDate, getCategoryColor, getCategoryLabel } from "@/lib/expense-ui";
 import { listRowInteractive, sectionLabelSx, surfaceCard } from "@/theme/ui";
 
 type RecentExpensesSectionProps = {
@@ -33,7 +33,7 @@ export const RecentExpensesSection = ({ categoryPalette, expenses, onSelectExpen
       ) : (
         expenses.map((expense, index) => (
           <Stack
-            key={expense.id}
+            key={expense.expenseId}
             direction="row"
             justifyContent="space-between"
             alignItems="center"
@@ -47,13 +47,13 @@ export const RecentExpensesSection = ({ categoryPalette, expenses, onSelectExpen
             })}
           >
             <Stack direction="row" spacing={1.25} alignItems="center" sx={{ minWidth: 0 }}>
-              <Box sx={{ width: 8, height: 8, borderRadius: "50%", flexShrink: 0, bgcolor: getCategoryColor(expense.category, categoryPalette) }} />
+              <Box sx={{ width: 8, height: 8, borderRadius: "50%", flexShrink: 0, bgcolor: getCategoryColor(expense.categoryId, categoryPalette) }} />
               <Box sx={{ minWidth: 0 }}>
                 <Typography sx={{ fontWeight: 600 }} noWrap>
-                  {expense.description}
+                  {expense.description ?? "—"}
                 </Typography>
                 <Typography variant="body2" color="text.secondary" noWrap>
-                  {expense.category} · {formatShortDate(expense.date)}
+                  {getCategoryLabel(expense.categoryId, categoryPalette)} · {formatShortDate(expense.date)}
                 </Typography>
               </Box>
             </Stack>

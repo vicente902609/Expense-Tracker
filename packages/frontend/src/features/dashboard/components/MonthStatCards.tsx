@@ -7,12 +7,14 @@ import { RADIUS_DENSE } from "@/theme/ui";
 
 type MonthStatCardsProps = {
   spent: number;
+  /** Month-to-date total / day of month (local calendar). */
+  avgDailyThisMonth: number;
   spendVsPriorMonthNote: string;
   expensesCount: number;
   goal?: Goal;
 };
 
-export const MonthStatCards = ({ spent, spendVsPriorMonthNote, expensesCount, goal }: MonthStatCardsProps) => (
+export const MonthStatCards = ({ spent, avgDailyThisMonth, spendVsPriorMonthNote, expensesCount, goal }: MonthStatCardsProps) => (
   <Box
     sx={{
       display: "grid",
@@ -28,9 +30,9 @@ export const MonthStatCards = ({ spent, spendVsPriorMonthNote, expensesCount, go
         accent: "error" as const,
       },
       {
-        label: "Target",
-        value: goal ? formatCurrency(goal.targetExpense) : "Set goal",
-        note: goal ? "monthly spending target" : "create goal to track pace",
+        label: "Avg/day",
+        value: formatCurrency(avgDailyThisMonth),
+        note: "avg daily spend this month",
         accent: "neutral" as const,
       },
       {

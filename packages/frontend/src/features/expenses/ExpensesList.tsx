@@ -2,20 +2,25 @@ import { useState } from "react";
 import { Button, Card, CardContent, Divider, List, ListItem, ListItemText, Stack, TextField, Typography } from "@mui/material";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { deleteExpense, listExpenses, updateExpense } from "@/api/expenses";
+import { deleteExpense, fetchAllExpenses, updateExpense } from "@/api/expenses";
+import { useCategories } from "@/hooks/use-categories";
+import { amountTextFieldProps, buildCategoryPalette, getCategoryLabel } from "@/lib/expense-ui";
 
 export const ExpensesList = () => {
   const queryClient = useQueryClient();
+  const { custom, predefined } = useCategories();
+  const categoryPalette = buildCategoryPalette(predefined, custom);
+
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState({
     amount: "",
     description: "",
-    category: "",
+    categoryId: "",
     date: "",
   });
   const expensesQuery = useQuery({
     queryKey: ["expenses"],
-    queryFn: listExpenses,
+    queryFn: fetchAllExpenses,
   });
 
   const deleteMutation = useMutation({
@@ -30,10 +35,9 @@ export const ExpensesList = () => {
     mutationFn: ({ expenseId }: { expenseId: string }) =>
       updateExpense(expenseId, {
         amount: Number(draft.amount),
-        description: draft.description,
-        category: draft.category,
+        description: draft.description.trim() || undefined,
+        categoryId: draft.categoryId,
         date: draft.date,
-        aiParsed: false,
       }),
     onSuccess: () => {
       setEditingId(null);
@@ -46,7 +50,8 @@ export const ExpensesList = () => {
   const monthKey = new Date().toISOString().slice(0, 7);
   const monthSpend = expenses.filter((expense) => expense.date.startsWith(monthKey)).reduce((total, expense) => total + expense.amount, 0);
   const categoryTotals = expenses.reduce<Record<string, number>>((totals, expense) => {
-    totals[expense.category] = (totals[expense.category] ?? 0) + expense.amount;
+    const label = getCategoryLabel(expense.categoryId, categoryPalette);
+    totals[label] = (totals[label] ?? 0) + expense.amount;
     return totals;
   }, {});
   const topCategories = Object.entries(categoryTotals)
@@ -82,14 +87,14 @@ export const ExpensesList = () => {
           </Stack>
           <List disablePadding>
             {(expensesQuery.data ?? []).map((expense, index) => (
-              <div key={expense.id}>
+              <div key={expense.expenseId}>
                 <ListItem
                   disableGutters
                   secondaryAction={
                     <Stack direction="row" spacing={1}>
-                      {editingId === expense.id ? (
+                      {editingId === expense.expenseId ? (
                         <>
-                          <Button onClick={() => updateMutation.mutate({ expenseId: expense.id })}>Save</Button>
+                          <Button onClick={() => updateMutation.mutate({ expenseId: expense.expenseId })}>Save</Button>
                           <Button color="inherit" onClick={() => setEditingId(null)}>
                             Cancel
                           </Button>
@@ -99,18 +104,18 @@ export const ExpensesList = () => {
                           <Button
                             color="inherit"
                             onClick={() => {
-                              setEditingId(expense.id);
+                              setEditingId(expense.expenseId);
                               setDraft({
                                 amount: expense.amount.toString(),
-                                description: expense.description,
-                                category: expense.category,
+                                description: expense.description ?? "",
+                                categoryId: expense.categoryId,
                                 date: expense.date,
                               });
                             }}
                           >
                             Edit
                           </Button>
-                          <Button color="inherit" onClick={() => deleteMutation.mutate(expense.id)}>
+                          <Button color="inherit" onClick={() => deleteMutation.mutate(expense.expenseId)}>
                             Delete
                           </Button>
                         </>
@@ -118,15 +123,25 @@ export const ExpensesList = () => {
                     </Stack>
                   }
                 >
-                  {editingId === expense.id ? (
+                  {editingId === expense.expenseId ? (
                     <Stack spacing={1.5} sx={{ width: "100%", pr: 12 }}>
-                      <TextField label="Amount" value={draft.amount} onChange={(event) => setDraft((current) => ({ ...current, amount: event.target.value }))} />
+                      <TextField
+                        label="Amount"
+                        {...amountTextFieldProps}
+                        value={draft.amount}
+                        onChange={(event) => setDraft((current) => ({ ...current, amount: event.target.value }))}
+                      />
                       <TextField
                         label="Description"
                         value={draft.description}
                         onChange={(event) => setDraft((current) => ({ ...current, description: event.target.value }))}
                       />
-                      <TextField label="Category" value={draft.category} onChange={(event) => setDraft((current) => ({ ...current, category: event.target.value }))} />
+                      <TextField
+                        label="Category ID"
+                        value={draft.categoryId}
+                        onChange={(event) => setDraft((current) => ({ ...current, categoryId: event.target.value }))}
+                        helperText="Predefined or custom category id from Categories"
+                      />
                       <TextField
                         label="Date"
                         type="date"
@@ -137,8 +152,8 @@ export const ExpensesList = () => {
                     </Stack>
                   ) : (
                     <ListItemText
-                      primary={`${expense.description} · $${expense.amount.toFixed(2)}`}
-                      secondary={`${expense.category} · ${expense.date}${expense.aiParsed ? " · AI parsed" : ""}`}
+                      primary={`${expense.description ?? "—"} · $${expense.amount.toFixed(2)}`}
+                      secondary={`${getCategoryLabel(expense.categoryId, categoryPalette)} · ${expense.date}`}
                     />
                   )}
                 </ListItem>

@@ -6,6 +6,7 @@ import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { createGoal, updateGoal } from "@/api/goals";
+import { amountTextFieldProps } from "@/lib/expense-ui";
 
 type GoalSetupDialogProps = {
   existingGoal?: Goal;
@@ -101,6 +102,7 @@ export const GoalSetupDialog = ({ existingGoal, open, onClose, initialValues, ti
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25}>
               <TextField
                 label="Target amount"
+                {...amountTextFieldProps}
                 value={form.targetAmount}
                 onChange={(event) => setForm((current) => ({ ...current, targetAmount: event.target.value }))}
                 sx={{ flex: 1 }}
@@ -117,12 +119,14 @@ export const GoalSetupDialog = ({ existingGoal, open, onClose, initialValues, ti
 
             <TextField
               label="Monthly spending target"
+              {...amountTextFieldProps}
               value={form.targetExpense}
               onChange={(event) => setForm((current) => ({ ...current, targetExpense: event.target.value }))}
               helperText="Anything you spend under this each month counts as savings toward your goal."
             />
             <TextField
               label="Already saved (optional)"
+              {...amountTextFieldProps}
               value={form.savedAmount}
               onChange={(event) => setForm((current) => ({ ...current, savedAmount: event.target.value }))}
             />

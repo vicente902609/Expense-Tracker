@@ -1,11 +1,13 @@
 import { useState } from "react";
 import type { CustomCategoryApi, Expense, PredefinedCategory } from "@expense-tracker/shared";
+import { useQuery } from "@tanstack/react-query";
 import { alpha } from "@mui/material/styles";
 import {
   Alert,
   Box,
   Button,
   Chip,
+  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -15,19 +17,22 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
+import { fetchAllExpenses } from "@/api/expenses";
 import { CategoryColorSwatch } from "@/components/CategoryColorSwatch";
 import { useCategories } from "@/hooks/use-categories";
 import { listRowInteractive, RADIUS_INNER, radiusInner, sectionLabelSx, surfaceCard } from "@/theme/ui";
 
-type CategoriesViewProps = {
-  expenses: Expense[];
-};
-
-const getCategoryCount = (expenses: Expense[], category: string) => expenses.filter((expense) => expense.category === category).length;
+const getCategoryCount = (expenses: Expense[], categoryId: string) => expenses.filter((expense) => expense.categoryId === categoryId).length;
 
 const defaultGray = "#8e8e87";
 
-export const CategoriesView = ({ expenses }: CategoriesViewProps) => {
+export const CategoriesView = () => {
+  const expensesQuery = useQuery({
+    queryKey: ["expenses", "all"],
+    queryFn: fetchAllExpenses,
+  });
+  const expenses = expensesQuery.data ?? [];
+
   const [draftCategory, setDraftCategory] = useState("");
   const [addColorHex, setAddColorHex] = useState(defaultGray);
   const [editingEntry, setEditingEntry] = useState<CustomCategoryApi | null>(null);
@@ -52,7 +57,7 @@ export const CategoriesView = ({ expenses }: CategoriesViewProps) => {
   };
 
   const renderPredefinedRow = (row: PredefinedCategory) => {
-    const count = getCategoryCount(expenses, row.name);
+    const count = getCategoryCount(expenses, row.categoryId);
 
     return (
       <Stack
@@ -95,7 +100,7 @@ export const CategoriesView = ({ expenses }: CategoriesViewProps) => {
   };
 
   const renderCustomRow = (entry: CustomCategoryApi) => {
-    const count = getCategoryCount(expenses, entry.name);
+    const count = getCategoryCount(expenses, entry.categoryId);
 
     return (
       <Stack
@@ -166,6 +171,14 @@ export const CategoriesView = ({ expenses }: CategoriesViewProps) => {
       />
     </InputAdornment>
   );
+
+  if (expensesQuery.isLoading) {
+    return (
+      <Box sx={{ display: "grid", placeItems: "center", py: 10 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
 
   return (
     <Stack spacing={2.5} sx={{ px: { xs: 2, md: 3 }, py: { xs: 2, md: 3 }, maxWidth: 920, mx: "auto" }}>

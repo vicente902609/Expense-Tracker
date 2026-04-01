@@ -1,8 +1,10 @@
 import { useMemo } from "react";
 import type { Expense } from "@expense-tracker/shared";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { alpha } from "@mui/material/styles";
-import { Box, Stack, Tooltip, Typography } from "@mui/material";
+import { Box, CircularProgress, Stack, Tooltip, Typography } from "@mui/material";
 
+import { fetchExpensesInRange } from "@/api/expenses";
 import { DateFilter } from "@/components/DateFilter";
 import { useDateFilter } from "@/hooks/use-date-filter";
 import { daysInclusiveInRange, formatDateRangeLabel, type DateFilterKind } from "@/lib/date-filter";
@@ -11,6 +13,7 @@ import {
   type ChartSeriesPoint,
   formatCurrency,
   getCategoryColor,
+  getCategoryLabel,
   getCategoryTotals,
   getDailySeriesForRange,
   getMonthlySeriesForRange,
@@ -20,7 +23,6 @@ import { RADIUS_DENSE, sectionLabelSx, surfaceCard } from "@/theme/ui";
 
 type ReportsViewProps = {
   categoryPalette: readonly CategoryPaletteEntry[];
-  expenses: Expense[];
 };
 
 const chartTitleForKind = (kind: DateFilterKind) => {
@@ -67,13 +69,16 @@ const buildReportSeries = (kind: DateFilterKind, filtered: Expense[], fromIso: s
   return { series: getMonthlySeriesForRange(filtered, fromIso, toIso), bucketLabel: "month" };
 };
 
-export const ReportsView = ({ categoryPalette, expenses }: ReportsViewProps) => {
+export const ReportsView = ({ categoryPalette }: ReportsViewProps) => {
   const { applyCustomRange, fromDate, kind, selectPreset, toDate } = useDateFilter("month", "reports");
 
-  const filteredExpenses = useMemo(
-    () => expenses.filter((expense) => expense.date >= fromDate && expense.date <= toDate),
-    [expenses, fromDate, toDate],
-  );
+  const expensesQuery = useQuery({
+    queryKey: ["expenses", "range", fromDate, toDate],
+    queryFn: () => fetchExpensesInRange(fromDate, toDate),
+    placeholderData: keepPreviousData,
+  });
+
+  const filteredExpenses = expensesQuery.data ?? [];
 
   const { series, bucketLabel } = useMemo(
     () => buildReportSeries(kind, filteredExpenses, fromDate, toDate),
@@ -81,9 +86,20 @@ export const ReportsView = ({ categoryPalette, expenses }: ReportsViewProps) => 
   );
 
   const maxValue = Math.max(...series.map((entry) => entry.total), 1);
-  const categoryTotals = getCategoryTotals(filteredExpenses);
+  const categoryTotals = useMemo(
+    () => getCategoryTotals(filteredExpenses, (id) => getCategoryLabel(id, categoryPalette)),
+    [filteredExpenses, categoryPalette],
+  );
   const periodTotal = filteredExpenses.reduce((sum, expense) => sum + expense.amount, 0);
   const averagePerBucket = series.length > 0 ? periodTotal / series.length : 0;
+
+  if (expensesQuery.isPending && expensesQuery.data === undefined) {
+    return (
+      <Box sx={{ display: "grid", placeItems: "center", py: 10 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
 
   return (
     <Stack spacing={2.5} sx={{ px: { xs: 2, md: 3 }, py: { xs: 2, md: 3 }, maxWidth: 1100, mx: "auto" }}>

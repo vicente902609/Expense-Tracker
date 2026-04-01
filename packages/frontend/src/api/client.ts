@@ -4,6 +4,19 @@ import { authStorage } from "@/lib/storage";
 type RequestOptions = {
   body?: unknown;
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+  /** Merged after defaults; `Authorization` from the access token always wins when a token exists. */
+  headers?: Record<string, string>;
+};
+
+const buildRequestHeaders = (options: RequestOptions, accessToken: string | null): Record<string, string> => {
+  const headers: Record<string, string> = { ...(options.headers ?? {}) };
+  if (options.body !== undefined) {
+    headers["Content-Type"] = "application/json";
+  }
+  if (accessToken) {
+    headers.Authorization = `Bearer ${accessToken}`;
+  }
+  return headers;
 };
 
 type ApiEnvelope = {
@@ -93,11 +106,8 @@ export const apiRequest = async <T>(path: string, options: RequestOptions = {}, 
   const token = authStorage.getAccessToken();
   const response = await fetch(`${env.apiBaseUrl}${path}`, {
     method: options.method ?? "GET",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: options.body ? JSON.stringify(options.body) : undefined,
+    headers: buildRequestHeaders(options, token),
+    body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
   });
 
   if (response.status === 204) {

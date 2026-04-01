@@ -73,7 +73,7 @@ export const createGoal = async (userId: string, input: GoalInput) => {
       projectedEta: null,
       isOnTrack: false,
       shortfallAmount: input.targetAmount,
-      paceWindowDays: 30,
+      paceWindowDays: 7,
     },
     forecastUpdatedAt: now,
     updatedAt: now,

@@ -1,24 +1,65 @@
 import type { Expense } from "@expense-tracker/shared";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import { alpha } from "@mui/material/styles";
-import { Box, Button, Chip, Stack, Typography } from "@mui/material";
+import { Box, Button, Chip, CircularProgress, Stack, Typography } from "@mui/material";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 
+import { listExpensesPage } from "@/api/expenses";
 import { DateFilter } from "@/components/DateFilter";
-import { type CategoryPaletteEntry, formatCurrency, formatMonthLabel, formatShortDate, getCategoryColor } from "@/lib/expense-ui";
+import { formatDateRangeLabel } from "@/lib/date-filter";
+import {
+  type CategoryPaletteEntry,
+  formatCurrency,
+  formatShortDate,
+  getCategoryColor,
+  getCategoryLabel,
+} from "@/lib/expense-ui";
 import { listRowInteractive, sectionLabelSx, surfaceCard } from "@/theme/ui";
-import { useExpenseFilters } from "@/features/expenses/hooks/use-expense-filters";
+import { useExpenseListFilters } from "@/features/expenses/hooks/use-expense-filters";
+
+const PAGE_SIZE = 10;
 
 type ExpensesViewProps = {
   availableCategories: string[];
   categoryPalette: readonly CategoryPaletteEntry[];
-  expenses: Expense[];
   onAddExpense: () => void;
   onSelectExpense: (expense: Expense) => void;
 };
 
-export const ExpensesView = ({ availableCategories, categoryPalette, expenses, onAddExpense, onSelectExpense }: ExpensesViewProps) => {
-  const { applyCustomRange, filteredExpenses, fromDate, kind, selectedCategory, selectPreset, setSelectedCategory, toDate, total } =
-    useExpenseFilters(expenses);
+export const ExpensesView = ({ availableCategories, categoryPalette, onAddExpense, onSelectExpense }: ExpensesViewProps) => {
+  const {
+    applyCustomRange,
+    fromDate,
+    kind,
+    listQueryParams,
+    selectedCategory,
+    selectPreset,
+    setSelectedCategory,
+    toDate,
+  } = useExpenseListFilters(categoryPalette);
+
+  const infinite = useInfiniteQuery({
+    queryKey: ["expenses", "list", listQueryParams.startDate, listQueryParams.endDate, listQueryParams.categoryId ?? ""],
+    queryFn: ({ pageParam }) =>
+      listExpensesPage({
+        ...listQueryParams,
+        limit: PAGE_SIZE,
+        cursor: pageParam,
+      }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+  });
+
+  const pages = infinite.data?.pages ?? [];
+  const firstPage = pages[0];
+  const items = pages.flatMap((p) => p.expenses ?? []);
+  /** Express API sends totals; serverless list may omit them — do not treat missing as 0 or the list looks empty. */
+  const totalCount =
+    firstPage?.totalCount !== undefined && firstPage.totalCount !== null ? firstPage.totalCount : items.length;
+  const totalAmount =
+    firstPage?.totalAmount !== undefined && firstPage.totalAmount !== null
+      ? firstPage.totalAmount
+      : items.reduce((sum, e) => sum + e.amount, 0);
 
   return (
     <Stack spacing={2.5} sx={{ px: { xs: 2, md: 3 }, py: { xs: 2, md: 3 }, maxWidth: 1100, mx: "auto" }}>
@@ -37,7 +78,7 @@ export const ExpensesView = ({ availableCategories, categoryPalette, expenses, o
             All activity
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-            {formatMonthLabel(new Date().toISOString().slice(0, 10))} · {filteredExpenses.length} items · {formatCurrency(total)}
+            {formatDateRangeLabel(fromDate, toDate)} · {totalCount} items · {formatCurrency(totalAmount)}
           </Typography>
         </Box>
 
@@ -69,12 +110,15 @@ export const ExpensesView = ({ availableCategories, categoryPalette, expenses, o
         >
           {["All", ...availableCategories].map((category) => {
             const selected = selectedCategory === category;
-            const accent = category === "All" ? undefined : getCategoryColor(category, categoryPalette);
+            const idForChip = category === "All" ? "" : (categoryPalette.find((e) => e.name === category)?.categoryId ?? "");
+            const accent = category === "All" ? undefined : getCategoryColor(idForChip, categoryPalette);
             return (
               <Chip
                 key={category}
                 label={category}
-                onClick={() => setSelectedCategory(category)}
+                onClick={() => {
+                  setSelectedCategory(category);
+                }}
                 color={selected ? "primary" : "default"}
                 variant={selected ? "filled" : "outlined"}
                 sx={{
@@ -94,12 +138,18 @@ export const ExpensesView = ({ availableCategories, categoryPalette, expenses, o
       </Box>
 
       <Box sx={(theme) => ({ overflow: "hidden", ...surfaceCard(theme) })}>
-        {filteredExpenses.length === 0 ? (
+        {infinite.isLoading ? (
+          <Box sx={{ display: "grid", placeItems: "center", py: 6 }}>
+            <CircularProgress size={36} />
+          </Box>
+        ) : infinite.error ? (
+          <Typography sx={{ p: 2.5, color: "error.main" }}>Could not load expenses. Check your connection and try again.</Typography>
+        ) : items.length === 0 ? (
           <Typography sx={{ p: 2.5, color: "text.secondary" }}>No expenses match these filters. Try another category or date range.</Typography>
         ) : (
-          filteredExpenses.map((expense, index) => (
+          items.map((expense, index) => (
             <Stack
-              key={expense.id}
+              key={expense.expenseId}
               direction="row"
               justifyContent="space-between"
               alignItems="center"
@@ -108,18 +158,26 @@ export const ExpensesView = ({ availableCategories, categoryPalette, expenses, o
                 px: { xs: 1.75, sm: 2 },
                 py: 1.6,
                 cursor: "pointer",
-                borderBottom: index < filteredExpenses.length - 1 ? `1px solid ${alpha(theme.palette.common.white, 0.06)}` : "none",
+                borderBottom: index < items.length - 1 ? `1px solid ${alpha(theme.palette.common.white, 0.06)}` : "none",
                 ...listRowInteractive(theme),
               })}
             >
               <Stack direction="row" spacing={1.25} alignItems="center" sx={{ minWidth: 0 }}>
-                <Box sx={{ width: 8, height: 8, borderRadius: "50%", flexShrink: 0, bgcolor: getCategoryColor(expense.category, categoryPalette) }} />
+                <Box
+                  sx={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: "50%",
+                    flexShrink: 0,
+                    bgcolor: getCategoryColor(expense.categoryId, categoryPalette),
+                  }}
+                />
                 <Box sx={{ minWidth: 0 }}>
                   <Typography sx={{ fontWeight: 600 }} noWrap>
-                    {expense.description}
+                    {expense.description ?? "—"}
                   </Typography>
                   <Typography variant="body2" color="text.secondary" noWrap>
-                    {expense.category} · {formatShortDate(expense.date)}
+                    {getCategoryLabel(expense.categoryId, categoryPalette)} · {formatShortDate(expense.date)}
                   </Typography>
                 </Box>
               </Stack>
@@ -128,6 +186,20 @@ export const ExpensesView = ({ availableCategories, categoryPalette, expenses, o
           ))
         )}
       </Box>
+
+      {infinite.hasNextPage ? (
+        <Stack alignItems="center" sx={{ py: 1 }}>
+          <Button
+            variant="outlined"
+            color="primary"
+            disabled={infinite.isFetchingNextPage}
+            onClick={() => void infinite.fetchNextPage()}
+            sx={{ minHeight: 44, px: 3 }}
+          >
+            {infinite.isFetchingNextPage ? "Loading…" : "Load more"}
+          </Button>
+        </Stack>
+      ) : null}
 
       <Button
         variant="contained"

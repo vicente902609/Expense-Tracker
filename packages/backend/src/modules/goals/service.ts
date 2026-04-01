@@ -1,10 +1,22 @@
 import { goalInputSchema } from "@expense-tracker/shared";
 
 import { AppError } from "../../lib/errors.js";
+import { listPredefinedCategoryDocuments } from "../categories/predefined-categories.repository.js";
+import { findAllExpensesForUser } from "../expenses/repository.js";
+import { getUserCustomCategoryDocs } from "../users/repository.js";
 import { buildGoalEtaInsight } from "./insight.js";
-import { listExpenses } from "../expenses/repository.js";
 import { computeGoalForecast } from "./forecast.js";
 import { createGoal, listGoalDocuments, listGoals, updateGoalDetails, updateGoalForecast } from "./repository.js";
+
+const resolveCategoryName = async (userId: string, categoryId: string | null): Promise<string | null> => {
+  if (!categoryId) {
+    return null;
+  }
+
+  const [predefined, custom] = await Promise.all([listPredefinedCategoryDocuments(), getUserCustomCategoryDocs(userId)]);
+  const hit = predefined.find((row) => row.categoryId === categoryId) ?? custom.find((row) => row.categoryId === categoryId);
+  return hit?.name ?? null;
+};
 
 export const createUserGoal = async (userId: string, payload: unknown) => {
   const input = goalInputSchema.parse(payload);
@@ -28,10 +40,7 @@ export const updateUserGoal = async (userId: string, goalId: string, payload: un
 };
 
 export const recalculateGoalForecasts = async (userId: string) => {
-  const [goalDocuments, expenses] = await Promise.all([
-    listGoalDocuments(userId),
-    listExpenses(userId, {}),
-  ]);
+  const [goalDocuments, expenses] = await Promise.all([listGoalDocuments(userId), findAllExpensesForUser(userId)]);
 
   await Promise.all(
     goalDocuments.map(async (goalDocument) => {
@@ -46,10 +55,19 @@ export const recalculateGoalForecasts = async (userId: string) => {
         expenses,
       });
 
+      const suggestedCategoryCut = await resolveCategoryName(userId, forecast.insightSeed.suggestedCategoryId);
+
       return updateGoalForecast(goalDocument._id.toHexString(), userId, {
         currentAmount: forecast.currentAmount,
         status: forecast.status,
-        aiEtaInsight: buildGoalEtaInsight(forecast.insightSeed),
+        aiEtaInsight: buildGoalEtaInsight({
+          monthlySavingsRate: forecast.insightSeed.monthlySavingsRate,
+          projectedEta: forecast.insightSeed.projectedEta,
+          targetDate: forecast.insightSeed.targetDate,
+          suggestedCategoryCut,
+          suggestedCutAmount: forecast.insightSeed.suggestedCutAmount,
+          status: forecast.insightSeed.status,
+        }),
         forecast: forecast.projection,
         forecastUpdatedAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),

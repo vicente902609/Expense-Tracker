@@ -1,7 +1,12 @@
 import type { Expense, Goal } from "@expense-tracker/shared";
-import { Stack, Typography } from "@mui/material";
+import { Box, CircularProgress, Stack, Typography } from "@mui/material";
 
-import { type CategoryPaletteEntry, formatSpendVsPriorMonth, getCurrentMonthExpenses, getSpendInCalendarMonth } from "@/lib/expense-ui";
+import {
+  type CategoryPaletteEntry,
+  formatSpendVsPriorMonth,
+  getAverageDailySpendThisMonth,
+} from "@/lib/expense-ui";
+import { useDashboardExpenses } from "@/hooks/use-dashboard-expenses";
 import { sectionLabelSx } from "@/theme/ui";
 import { DashboardGoalCard } from "@/features/dashboard/components/DashboardGoalCard";
 import { MonthStatCards } from "@/features/dashboard/components/MonthStatCards";
@@ -10,7 +15,6 @@ import { SmartEntryCard } from "@/features/dashboard/components/SmartEntryCard";
 
 type DashboardViewProps = {
   categoryPalette: readonly CategoryPaletteEntry[];
-  expenses: Expense[];
   goal?: Goal;
   onOpenGoalDialog: () => void;
   onCompleteGoal: () => void;
@@ -21,7 +25,6 @@ type DashboardViewProps = {
 
 export const DashboardView = ({
   categoryPalette,
-  expenses,
   goal,
   onOpenGoalDialog,
   onCompleteGoal,
@@ -29,12 +32,21 @@ export const DashboardView = ({
   onSelectExpense,
   onViewExpenses,
 }: DashboardViewProps) => {
-  const currentMonthExpenses = getCurrentMonthExpenses(expenses);
-  const spent = currentMonthExpenses.reduce((sum, expense) => sum + expense.amount, 0);
-  const priorMonthSpend = getSpendInCalendarMonth(expenses, -1);
+  const { expenses, isLoading, priorMonthSpend } = useDashboardExpenses();
+
+  const spent = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+  const avgDailyThisMonth = getAverageDailySpendThisMonth(spent);
   const spendVsPriorMonthNote = formatSpendVsPriorMonth(spent, priorMonthSpend);
-  const expensesCount = currentMonthExpenses.length;
+  const expensesCount = expenses.length;
   const recentExpenses = [...expenses].sort((left, right) => right.date.localeCompare(left.date) || right.createdAt.localeCompare(left.createdAt)).slice(0, 3);
+
+  if (isLoading) {
+    return (
+      <Box sx={{ display: "grid", placeItems: "center", py: 8 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
 
   return (
     <Stack spacing={0}>
@@ -44,6 +56,7 @@ export const DashboardView = ({
         <Typography sx={(theme) => sectionLabelSx(theme)}>This month</Typography>
 
         <MonthStatCards
+          avgDailyThisMonth={avgDailyThisMonth}
           expensesCount={expensesCount}
           goal={goal}
           spendVsPriorMonthNote={spendVsPriorMonthNote}

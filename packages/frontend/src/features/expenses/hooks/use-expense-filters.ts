@@ -1,29 +1,35 @@
 import { useMemo, useState } from "react";
-import type { Expense } from "@expense-tracker/shared";
 
+import { type CategoryPaletteEntry } from "@/lib/expense-ui";
 import { useDateFilter } from "@/hooks/use-date-filter";
 
-export const useExpenseFilters = (expenses: Expense[]) => {
+/**
+ * Date + category chip state for the Expenses tab, mapped to `GET /expenses` query params (server-side filter).
+ */
+export const useExpenseListFilters = (categoryPalette: readonly CategoryPaletteEntry[]) => {
   const [selectedCategory, setSelectedCategory] = useState("All");
   const dateFilter = useDateFilter("month", "expenses");
 
-  const filteredExpenses = useMemo(
-    () =>
-      expenses.filter((expense) => {
-        const matchesCategory = selectedCategory === "All" || expense.category === selectedCategory;
-        const matchesDate = expense.date >= dateFilter.fromDate && expense.date <= dateFilter.toDate;
-        return matchesCategory && matchesDate;
-      }),
-    [expenses, dateFilter.fromDate, dateFilter.toDate, selectedCategory],
-  );
+  const categoryId = useMemo(() => {
+    if (selectedCategory === "All") {
+      return undefined;
+    }
+    return categoryPalette.find((e) => e.name === selectedCategory)?.categoryId;
+  }, [selectedCategory, categoryPalette]);
 
-  const total = filteredExpenses.reduce((sum, expense) => sum + expense.amount, 0);
+  const listQueryParams = useMemo(
+    () => ({
+      startDate: dateFilter.fromDate,
+      endDate: dateFilter.toDate,
+      categoryId,
+    }),
+    [dateFilter.fromDate, dateFilter.toDate, categoryId],
+  );
 
   return {
     selectedCategory,
     setSelectedCategory,
-    filteredExpenses,
-    total,
+    listQueryParams,
     ...dateFilter,
   };
 };

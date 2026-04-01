@@ -4,7 +4,7 @@ import { Alert, Box, Button, Dialog, DialogContent, IconButton, Radio, Stack, Te
 import { alpha, useTheme } from "@mui/material/styles";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 
-import { formatCurrency } from "@/lib/expense-ui";
+import { amountTextFieldProps, formatCurrency } from "@/lib/expense-ui";
 
 type NextGoalChoice = "spent" | "carry" | "partial";
 
@@ -99,7 +99,14 @@ export const GoalCompletionDialog = ({ goal, open, onClose, onProceed }: GoalCom
               </Button>
             </Stack>
 
-            {choice === "partial" ? <TextField label="Carry-over amount" value={partialAmount} onChange={(event) => setPartialAmount(event.target.value)} /> : null}
+            {choice === "partial" ? (
+              <TextField
+                label="Carry-over amount"
+                {...amountTextFieldProps}
+                value={partialAmount}
+                onChange={(event) => setPartialAmount(event.target.value)}
+              />
+            ) : null}
             {choice === "partial" && (!partialAmount.trim() || Number(partialAmount) < 0) ? <Alert severity="info">Enter a valid amount to continue.</Alert> : null}
 
             <Stack direction="row" spacing={1.25}>

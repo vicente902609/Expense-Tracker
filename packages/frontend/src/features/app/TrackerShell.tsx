@@ -9,7 +9,6 @@ import CategoryRoundedIcon from "@mui/icons-material/CategoryRounded";
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
 import { useQuery } from "@tanstack/react-query";
 
-import { listExpenses } from "@/api/expenses";
 import { listGoals } from "@/api/goals";
 import { useCategories } from "@/hooks/use-categories";
 import { appShellGradient, RADIUS_SHELL } from "@/theme/ui";
@@ -48,22 +47,16 @@ export const TrackerShell = ({ onLogout }: TrackerShellProps) => {
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
   const { categoryPalette, custom, isLoading: categoriesLoading, predefined } = useCategories();
 
-  const expensesQuery = useQuery({
-    queryKey: ["expenses"],
-    queryFn: listExpenses,
-  });
-
   const goalsQuery = useQuery({
     queryKey: ["goals"],
     queryFn: listGoals,
   });
 
-  const expenses = expensesQuery.data ?? [];
   const goals = goalsQuery.data ?? [];
   const goal = goals[0];
   const predefinedNames = predefined.map((row) => row.name);
   const customNames = custom.map((row) => row.name);
-  const availableCategories = [...new Set([...predefinedNames, ...customNames, ...expenses.map((e) => e.category)])];
+  const availableCategories = [...new Set([...predefinedNames, ...customNames])];
 
   const openEditor = (expense?: Expense) => {
     setSelectedExpense(expense ?? null);
@@ -91,7 +84,7 @@ export const TrackerShell = ({ onLogout }: TrackerShellProps) => {
     setNewGoalDialogOpen(true);
   };
 
-  if (expensesQuery.isLoading || goalsQuery.isLoading || categoriesLoading) {
+  if (goalsQuery.isLoading || categoriesLoading) {
     return (
       <Box
         sx={(theme) => ({
@@ -224,7 +217,6 @@ export const TrackerShell = ({ onLogout }: TrackerShellProps) => {
             {tab === "home" ? (
               <DashboardView
                 categoryPalette={categoryPalette}
-                expenses={expenses}
                 goal={goal}
                 onCompleteGoal={openGoalCompletionDialog}
                 onOpenGoalDialog={openGoalDialog}
@@ -237,13 +229,12 @@ export const TrackerShell = ({ onLogout }: TrackerShellProps) => {
               <ExpensesView
                 availableCategories={availableCategories}
                 categoryPalette={categoryPalette}
-                expenses={expenses}
                 onAddExpense={() => openEditor()}
                 onSelectExpense={openEditor}
               />
             ) : null}
-            {tab === "reports" ? <ReportsView categoryPalette={categoryPalette} expenses={expenses} /> : null}
-            {tab === "categories" ? <CategoriesView expenses={expenses} /> : null}
+            {tab === "reports" ? <ReportsView categoryPalette={categoryPalette} /> : null}
+            {tab === "categories" ? <CategoriesView /> : null}
           </Box>
         </Box>
       </Box>
@@ -270,8 +261,7 @@ export const TrackerShell = ({ onLogout }: TrackerShellProps) => {
       </Box>
 
       <ExpenseEditorDialog
-        key={`${selectedExpense?.id ?? "new"}-${expenseEditorSession}`}
-        availableCategories={availableCategories}
+        key={`${selectedExpense?.expenseId ?? "new"}-${expenseEditorSession}`}
         categoryPalette={categoryPalette}
         expense={selectedExpense}
         open={editorOpen}
