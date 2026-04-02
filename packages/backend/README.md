@@ -268,3 +268,8 @@ packages/backend/src/
 4. **Goal insight side-effect cost** — `POST /expenses`, `PUT /expenses/:id`, and `DELETE /expenses/:id` each trigger a synchronous `recalculateGoalInsight` call that runs two GSI2 range queries (current + previous month) plus category name lookups. At free-tier scale this is negligible; consider skipping the recalc on `DELETE` if latency is a concern.
 5. **Goal uniqueness enforcement** — `POST /goals` uses `ConditionExpression: attribute_not_exists(SK)` on the DynamoDB `PutItem`. If the condition fails, return `409 Conflict` with message `"A goal already exists for this user. Use PUT /goals to update it."`
 6. **Insight staleness** — `insightUpdatedAt` is stored alongside `insight` so clients can show "last updated X minutes ago" if needed; no scheduled recalculation is required.
+
+## Future improvements
+
+1. **Secret Manager** — Use AWS Secrets Manager to store sensitive environment variables like `JWT_SECRET` and `REFRESH_TOKEN_SECRET` instead of hardcoding them in `.env` files.
+2. **

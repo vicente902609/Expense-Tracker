@@ -4,7 +4,6 @@ useDotenv: true
 
 plugins:
   - serverless-esbuild
-  - serverless-offline
 
 provider:
   name: aws

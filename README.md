@@ -82,19 +82,13 @@ Install dependencies:
 pnpm install
 ```
 
-Start the backend with serverless-offline (spins up a local API Gateway + Lambda emulator):
-
-```bash
-pnpm --filter @expense-tracker/backend serverless offline
-```
-
-In a second terminal, start the frontend dev server:
+Start the frontend dev server:
 
 ```bash
 pnpm dev   # http://localhost:3000
 ```
 
-Set `VITE_API_BASE_URL` in `packages/frontend/.env` to the serverless-offline endpoint shown in its output.
+Set `VITE_API_BASE_URL` in `packages/frontend/.env` to the API Gateway URL from the deployed backend.
 
 ## Deployment
 
