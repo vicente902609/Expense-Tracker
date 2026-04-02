@@ -1,0 +1,245 @@
+service: expense-tracker-backend
+
+useDotenv: true
+
+plugins:
+  - serverless-esbuild
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  stage: ${opt:stage, 'dev'}
+  region: ${opt:region, 'us-east-1'}
+  environment:
+    STAGE: ${self:provider.stage}
+    TABLE_NAME: expense-tracker-${self:provider.stage}
+    JWT_SECRET: ${env:JWT_SECRET}
+    REFRESH_TOKEN_SECRET: ${env:REFRESH_TOKEN_SECRET}
+    OPENAI_API_KEY: ${env:OPENAI_API_KEY, ''}
+    OPENAI_MODEL: ${env:OPENAI_MODEL, ''}
+  httpApi:
+    cors: true
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+            - dynamodb:Query
+            - dynamodb:Scan
+          Resource:
+            - !GetAtt ExpenseTrackerTable.Arn
+            - !Sub '${ExpenseTrackerTable.Arn}/index/*'
+
+functions:
+  # ── Auth ──────────────────────────────────────────────────────────────────
+  authRegister:
+    handler: src/handlers/auth/register.handler
+    events:
+      - httpApi:
+          method: POST
+          path: /auth/register
+  authLogin:
+    handler: src/handlers/auth/login.handler
+    events:
+      - httpApi:
+          method: POST
+          path: /auth/login
+  authRefresh:
+    handler: src/handlers/auth/refresh.handler
+    events:
+      - httpApi:
+          method: POST
+          path: /auth/refresh
+  authLogout:
+    handler: src/handlers/auth/logout.handler
+    events:
+      - httpApi:
+          method: POST
+          path: /auth/logout
+
+  # ── Categories ────────────────────────────────────────────────────────────
+  categoriesList:
+    handler: src/handlers/categories/list.handler
+    events:
+      - httpApi:
+          method: GET
+          path: /categories
+  categoriesCreate:
+    handler: src/handlers/categories/create.handler
+    events:
+      - httpApi:
+          method: POST
+          path: /categories
+  categoriesUpdate:
+    handler: src/handlers/categories/update.handler
+    events:
+      - httpApi:
+          method: PUT
+          path: /categories/{categoryId}
+  categoriesDelete:
+    handler: src/handlers/categories/delete.handler
+    events:
+      - httpApi:
+          method: DELETE
+          path: /categories/{categoryId}
+
+  # ── Expenses ──────────────────────────────────────────────────────────────
+  expensesList:
+    handler: src/handlers/expenses/list.handler
+    events:
+      - httpApi:
+          method: GET
+          path: /expenses
+  expensesCreate:
+    handler: src/handlers/expenses/create.handler
+    events:
+      - httpApi:
+          method: POST
+          path: /expenses
+  expensesGet:
+    handler: src/handlers/expenses/get.handler
+    events:
+      - httpApi:
+          method: GET
+          path: /expenses/{expenseId}
+  expensesUpdate:
+    handler: src/handlers/expenses/update.handler
+    events:
+      - httpApi:
+          method: PUT
+          path: /expenses/{expenseId}
+  expensesDelete:
+    handler: src/handlers/expenses/delete.handler
+    events:
+      - httpApi:
+          method: DELETE
+          path: /expenses/{expenseId}
+
+  # ── Goals ───────────────────────────────────────────────────────────────
+  goalsGet:
+    handler: src/handlers/goals/get.handler
+    events:
+      - httpApi:
+          method: GET
+          path: /goals
+  goalsCreate:
+    handler: src/handlers/goals/create.handler
+    events:
+      - httpApi:
+          method: POST
+          path: /goals
+  goalsUpdate:
+    handler: src/handlers/goals/update.handler
+    events:
+      - httpApi:
+          method: PUT
+          path: /goals
+  goalsDelete:
+    handler: src/handlers/goals/delete.handler
+    events:
+      - httpApi:
+          method: DELETE
+          path: /goals
+
+  # ── Reports ───────────────────────────────────────────────────────────────
+  reportsMonthly:
+    handler: src/handlers/reports/monthly.handler
+    events:
+      - httpApi:
+          method: GET
+          path: /reports/monthly
+  reportsByCategory:
+    handler: src/handlers/reports/by-category.handler
+    events:
+      - httpApi:
+          method: GET
+          path: /reports/by-category
+
+  # ── AI ─────────────────────────────────────────────────────────────────────
+  aiParseExpense:
+    handler: src/handlers/ai/parse-expense.handler
+    events:
+      - httpApi:
+          method: POST
+          path: /ai/parse-expense
+
+package:
+  patterns:
+    - '!src/**/__tests__/**'
+    - '!src/**/*.test.ts'
+
+custom:
+  esbuild:
+    bundle: true
+    minify: false
+    sourcemap: false
+    target: node20
+    platform: node
+    concurrency: 10
+    external:
+      - '@aws-sdk/*'
+  serverless-offline:
+    httpPort: 3001
+    noPrependStageInUrl: true
+
+resources:
+  Resources:
+    ExpenseTrackerTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.TABLE_NAME}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: PK
+            AttributeType: S
+          - AttributeName: SK
+            AttributeType: S
+          - AttributeName: GSI1PK
+            AttributeType: S
+          - AttributeName: GSI1SK
+            AttributeType: S
+          - AttributeName: GSI2PK
+            AttributeType: S
+          - AttributeName: GSI2SK
+            AttributeType: S
+          - AttributeName: GSI3PK
+            AttributeType: S
+          - AttributeName: GSI3SK
+            AttributeType: S
+        KeySchema:
+          - AttributeName: PK
+            KeyType: HASH
+          - AttributeName: SK
+            KeyType: RANGE
+        GlobalSecondaryIndexes:
+          - IndexName: GSI1-EmailIndex
+            KeySchema:
+              - AttributeName: GSI1PK
+                KeyType: HASH
+              - AttributeName: GSI1SK
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+          - IndexName: GSI2-UserExpenseDateIndex
+            KeySchema:
+              - AttributeName: GSI2PK
+                KeyType: HASH
+              - AttributeName: GSI2SK
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+          - IndexName: GSI3-UserCategoryDateIndex
+            KeySchema:
+              - AttributeName: GSI3PK
+                KeyType: HASH
+              - AttributeName: GSI3SK
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+        TimeToLiveSpecification:
+          AttributeName: expiresAt
+          Enabled: true

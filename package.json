@@ -1,0 +1,28 @@
+{
+  "name": "expense-tracker",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@10.0.0",
+  "scripts": {
+    "build": "pnpm -r build",
+    "dev": "pnpm --filter @expense-tracker/frontend dev",
+    "seed": "pnpm --filter @expense-tracker/backend seed",
+    "lint": "pnpm -r lint",
+    "lint:fix": "eslint packages/backend/src packages/frontend/src --fix --max-warnings=0",
+    "deploy": "pnpm --filter @expense-tracker/frontend --filter @expense-tracker/backend run deploy",
+    "deploy:frontend:infra": "pnpm --filter @expense-tracker/frontend run deploy:infra",
+    "deploy:frontend:client": "pnpm --filter @expense-tracker/frontend run deploy:client",
+    "deploy:frontend": "pnpm --filter @expense-tracker/frontend run deploy",
+    "deploy:backend": "pnpm --filter @expense-tracker/backend run deploy",
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.4",
+    "eslint": "^9.39.4",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.5.2",
+    "globals": "^17.4.0",
+    "typescript-eslint": "^8.57.2"
+  }
+}

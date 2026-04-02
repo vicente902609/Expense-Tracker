@@ -1,0 +1,133 @@
+service: expense-tracker-frontend
+
+useDotenv: true
+
+plugins:
+  - serverless-finch
+  - serverless-cloudfront-invalidate
+
+provider:
+  name: aws
+  stage: ${opt:stage, 'dev'}
+  region: ${opt:region, 'us-east-1'}
+
+custom:
+  bucketName: expense-tracker-frontend-${self:provider.stage}-${aws:accountId}
+
+  # ── S3 static-site sync (serverless-finch) ───────────────────────────────────
+  client:
+    bucketName: ${self:custom.bucketName}
+    distributionFolder: dist
+    indexDocument: index.html
+    errorDocument: index.html        # SPA fallback — all routes serve index.html
+    manageResources: false           # bucket is managed in resources section below
+
+    # Vite fingerprints JS/CSS/asset filenames so they can be cached forever.
+    # index.html is NOT hashed and must always be re-fetched.
+    objectHeaders:
+      index.html:
+        - name: Cache-Control
+          value: "no-cache, no-store, must-revalidate"
+      "assets/**":
+        - name: Cache-Control
+          value: "public, max-age=31536000, immutable"
+      "**/*.js":
+        - name: Cache-Control
+          value: "public, max-age=31536000, immutable"
+      "**/*.css":
+        - name: Cache-Control
+          value: "public, max-age=31536000, immutable"
+      "**/*.woff2":
+        - name: Cache-Control
+          value: "public, max-age=31536000, immutable"
+
+  # ── CloudFront cache invalidation (serverless-cloudfront-invalidate) ─────────
+  # Automatically triggered after `serverless client deploy` completes.
+  # Reads the distribution ID from the CloudFormation stack output.
+  cloudfrontInvalidate:
+    - distributionId: ${cf:${self:service}-${self:provider.stage}.CloudFrontDistributionId, ''}
+      autoInvalidate: true
+      items:
+        - "/*"
+
+resources:
+  Resources:
+    # ── S3 Bucket ─────────────────────────────────────────────────────────────
+    FrontendBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: ${self:custom.bucketName}
+        # Block all public access — CloudFront accesses the bucket via OAC
+        PublicAccessBlockConfiguration:
+          BlockPublicAcls: true
+          BlockPublicPolicy: true
+          IgnorePublicAcls: true
+          RestrictPublicBuckets: true
+
+    # ── Bucket Policy — allow CloudFront OAC to read objects ─────────────────
+    FrontendBucketPolicy:
+      Type: AWS::S3::BucketPolicy
+      Properties:
+        Bucket: !Ref FrontendBucket
+        PolicyDocument:
+          Statement:
+            - Sid: AllowCloudFrontOAC
+              Effect: Allow
+              Principal:
+                Service: cloudfront.amazonaws.com
+              Action: s3:GetObject
+              Resource: !Sub "${FrontendBucket.Arn}/*"
+              Condition:
+                StringEquals:
+                  AWS:SourceArn: !Sub
+                    - "arn:aws:cloudfront::${AWS::AccountId}:distribution/${DistId}"
+                    - DistId: !Ref CloudFrontDistribution
+
+    # ── CloudFront Origin Access Control ─────────────────────────────────────
+    CloudFrontOAC:
+      Type: AWS::CloudFront::OriginAccessControl
+      Properties:
+        OriginAccessControlConfig:
+          Name: ${self:service}-oac-${self:provider.stage}
+          OriginAccessControlOriginType: s3
+          SigningBehavior: always
+          SigningProtocol: sigv4
+
+    # ── CloudFront Distribution ───────────────────────────────────────────────
+    CloudFrontDistribution:
+      Type: AWS::CloudFront::Distribution
+      Properties:
+        DistributionConfig:
+          Enabled: true
+          HttpVersion: http2and3
+          DefaultRootObject: index.html
+          Origins:
+            - Id: S3Origin
+              DomainName: !GetAtt FrontendBucket.RegionalDomainName
+              OriginAccessControlId: !Ref CloudFrontOAC
+              S3OriginConfig: {}      # required field when using OAC
+          DefaultCacheBehavior:
+            TargetOriginId: S3Origin
+            ViewerProtocolPolicy: redirect-to-https
+            CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6  # CachingOptimized (AWS managed)
+            AllowedMethods: [GET, HEAD, OPTIONS]
+            CachedMethods: [GET, HEAD]
+            Compress: true
+          # Return index.html for all 403/404 responses so React Router works
+          CustomErrorResponses:
+            - ErrorCode: 403
+              ResponseCode: 200
+              ResponsePagePath: /index.html
+              ErrorCachingMinTTL: 0
+            - ErrorCode: 404
+              ResponseCode: 200
+              ResponsePagePath: /index.html
+              ErrorCachingMinTTL: 0
+
+  Outputs:
+    BucketName:
+      Value: !Ref FrontendBucket
+    CloudFrontDistributionId:
+      Value: !Ref CloudFrontDistribution
+    CloudFrontDomain:
+      Value: !GetAtt CloudFrontDistribution.DomainName
