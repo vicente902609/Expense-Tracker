@@ -120,74 +120,6 @@ src/
   test/         Vitest global setup
 ```
 
-### Detailed breakdown
-
-```
-src/
-  app/
-    App.tsx               Auth gate — renders AuthPage or AppLayout
-    AppLayout.tsx         Tab navigation, dialog orchestration, layout shell
-    AppLayout.styles.ts
-
-  pages/
-    auth/
-      AuthPage.tsx
-      AuthPage.styles.ts
-    dashboard/
-      DashboardPage.tsx
-      components/         DashboardGoalCard, MonthStatCards, RecentExpensesSection, SmartEntryCard
-      dialogs/
-        GoalSetupDialog.tsx
-    expenses/
-      ExpensesPage.tsx
-      ExpensesList.tsx
-      ExpensesPage.styles.ts
-      dialogs/
-        ExpenseEditorDialog.tsx
-      hooks/
-        use-expense-editor.ts
-        use-expense-filters.ts
-    categories/
-      CategoriesPage.tsx
-    reports/
-      ReportsPage.tsx
-
-  components/
-    DateFilter.tsx            Date preset + custom range picker
-    CategoryColorSwatch.tsx   Colored dot/swatch for category display
-    ExpenseRow.tsx            Reusable expense list row
-
-  hooks/
-    use-auth.ts               Session state, login/logout, token-expired listener
-    use-categories.ts         Fetches + mutates category list, builds palette
-    use-date-filter.ts        Date preset/range state machine
-    use-dashboard-expenses.ts Paginated expense fetch for dashboard
-
-  api/
-    client.ts     Base fetch wrapper — 401 handling, token refresh, error envelope
-    auth.ts       login / register / logout
-    expenses.ts   CRUD + paginated list
-    categories.ts predefined + custom category endpoints
-    goals.ts      goal CRUD
-    reports.ts    monthly + by-category aggregates
-    ai.ts         AI expense text parsing
-
-  lib/
-    categories.ts    Category resolution and allowlist helpers
-    date-filter.ts   Preset date range calculations
-    expense-ui.ts    Formatting, chart series builders, category palette helpers
-    goal-status.ts   Progress and chip label logic for goal cards
-    storage.ts       localStorage access for auth tokens and user
-    env.ts           VITE_API_BASE_URL validation and export
-
-  types/
-    index.ts         All Zod schemas + inferred TypeScript types
-
-  theme/
-    theme.ts         MUI createTheme — dark palette, typography, component overrides
-    ui.ts            Design tokens: RADIUS_*, surfaceCard(), sectionLabelSx(), etc.
-```
-
 ---
 
 ## Architecture
@@ -355,3 +287,17 @@ Copy from `.env.example`:
 ```bash
 copy packages\frontend\.env.example packages\frontend\.env
 ```
+
+---
+
+## Further improvement
+
+Ideas worth pursuing if there is more time:
+
+- **Reports date presets** — Enable the disabled “This week” / “This month” chips on the Reports page and wire them to API queries (or new endpoints) so weekly and monthly breakdowns match the labels.
+- **Deeper test coverage** — Integration tests for `AppLayout` (tabs, dialog open/close), more page-level flows, and visual regression or Storybook for critical UI.
+- **Accessibility** — Audit with axe or Lighthouse, focus management in dialogs, live regions for async errors, and clearer keyboard paths through filters and lists.
+- **Internationalization** — Extract user-facing strings (e.g. `react-i18next`) if the product needs multiple locales.
+- **Offline / PWA** — Service worker for shell caching, optional read-only cached data, or install prompt for mobile users.
+- **Performance** — Route-based code splitting, lazy-loaded chart/report chunks, and React Query tuning (stale times, prefetch) for slower networks.
+- **Observability** — Client-side error reporting (e.g. Sentry) with release tags aligned to deploys.

@@ -112,7 +112,7 @@ export const GoalSetupDialog = ({
               </Typography>
             ) : null}
             <TextField
-              label="Name"
+              label="Motivation"
               value={form.goalName}
               onChange={(event) => setForm((current) => ({ ...current, goalName: event.target.value }))}
             />

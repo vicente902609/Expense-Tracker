@@ -40,7 +40,7 @@ describe("GoalSetupDialog", () => {
 
     renderWithQuery(<GoalSetupDialog open onClose={onClose} />);
 
-    await user.type(screen.getByLabelText("Name"), "My budget");
+    await user.type(screen.getByLabelText("Motivation"), "My budget");
     await user.type(screen.getByLabelText("Monthly spending target"), "1200");
     await user.click(screen.getByRole("button", { name: "Create" }));
 
@@ -71,8 +71,8 @@ describe("GoalSetupDialog", () => {
 
     renderWithQuery(<GoalSetupDialog open onClose={onClose} existingGoal={existingGoal} />);
 
-    await user.clear(screen.getByLabelText("Name"));
-    await user.type(screen.getByLabelText("Name"), "Updated budget");
+    await user.clear(screen.getByLabelText("Motivation"));
+    await user.type(screen.getByLabelText("Motivation"), "Updated budget");
     await user.clear(screen.getByLabelText("Monthly spending target"));
     await user.type(screen.getByLabelText("Monthly spending target"), "1000");
     await user.click(screen.getByRole("button", { name: "Save" }));
