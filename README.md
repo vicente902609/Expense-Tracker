@@ -2,8 +2,6 @@
 
 Personal expense tracker monorepo: **React + Vite + MUI** frontend, **AWS Lambda + DynamoDB** backend. Includes **AI-assisted expense parsing** and **goal ETA forecasting**.
 
-**Repository:** `https://github.com/YOUR_USERNAME/Expense-Tracker` (replace with your fork)
-
 **Deployed:** add your production frontend/API URLs here when available.
 
 ## Tech stack
