@@ -11,6 +11,7 @@
     "lint:fix": "eslint packages/backend/src packages/frontend/src packages/shared/src --fix --max-warnings=0",
     "deploy": "pnpm --filter @expense-tracker/frontend --filter @expense-tracker/backend run deploy",
     "deploy:frontend:infra": "pnpm --filter @expense-tracker/frontend run deploy:infra",
+    "deploy:frontend:client": "pnpm --filter @expense-tracker/frontend run deploy:client",
     "deploy:frontend": "pnpm --filter @expense-tracker/frontend run deploy",
     "deploy:backend": "pnpm --filter @expense-tracker/backend run deploy",
     "test": "pnpm -r test",
