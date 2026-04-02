@@ -27,7 +27,66 @@ copy packages\frontend\.env.example packages\frontend\.env
 pnpm dev          # http://localhost:3000
 ```
 
-`VITE_API_BASE_URL` must point at the backend including the API prefix, e.g. `http://localhost:4000/api/v1`. The app throws a clear error on startup if the variable is missing.
+`VITE_API_BASE_URL` must be the **API root with no trailing slash** — paths like `/auth/login` and `/expenses` are appended by the client. Examples: `http://localhost:3001` when the backend runs **serverless-offline** (see `httpPort` in `packages/backend/serverless.yml`), your API Gateway invoke URL (often `https://….execute-api.<region>.amazonaws.com/<stage>`), or another local API if you use one. See `packages/frontend/.env.example` for more. The app throws a clear error on startup if the variable is missing.
+
+---
+
+## Deployment
+
+The frontend ships as a static SPA: **Vite builds to `dist/`**, then **Serverless** provisions **S3 + CloudFront** (`serverless.yml`) and syncs assets with **serverless-finch**. **CloudFront cache invalidation** runs after each client deploy (`serverless-cloudfront-invalidate`).
+
+### Prerequisites
+
+- **AWS CLI** configured with credentials that can create/update S3, CloudFront, CloudFormation, and IAM for this stack.
+- **Backend already deployed** — you need a real `VITE_API_BASE_URL` (API Gateway URL) before running a production build.
+
+### Important: env at build time
+
+`VITE_*` variables are **inlined when you run `vite build`**. Set `VITE_API_BASE_URL` in `packages/frontend/.env` (or export it in CI) **before** `pnpm build` / `deploy:client`, or the bundle will call the wrong API.
+
+### First-time infrastructure
+
+Creates the S3 bucket, CloudFront distribution, OAC, and bucket policy (one CloudFormation stack per stage):
+
+```bash
+# From this package
+pnpm deploy:infra
+
+# Or from the repo root
+pnpm deploy:frontend:infra
+```
+
+Optional stage/region (defaults: `dev`, `us-east-1`):
+
+```bash
+pnpm exec serverless deploy --stage prod --region us-east-1
+```
+
+After deploy, note the stack **outputs** (S3 bucket name, **CloudFront domain** — that is your site URL).
+
+### Upload a new build (typical release)
+
+Type-checks, builds with Vite, uploads `dist/` to the bucket, and invalidates CloudFront:
+
+```bash
+pnpm deploy:client
+
+# Or from the repo root
+pnpm deploy:frontend:client
+```
+
+### What each script does
+
+| Script | What it runs |
+|---|---|
+| `deploy:infra` | `serverless deploy` — infra only (no `dist/` upload) |
+| `deploy:client` | `pnpm build` then `serverless client deploy --no-confirm` — production assets + invalidation |
+
+`serverless-finch` uploads `dist/` per `custom.client` in `serverless.yml`. `index.html` is sent with `no-cache`; hashed JS/CSS/assets use long-lived cache headers.
+
+### SPA routing
+
+CloudFront custom error responses map **403/404 → `/index.html`** so client-side routes always load the app.
 
 ---
 
@@ -40,6 +99,8 @@ pnpm typecheck     # tsc --noEmit only
 pnpm lint          # ESLint, zero warnings allowed
 pnpm test          # Vitest (single run)
 pnpm test:watch    # Vitest watch mode
+pnpm deploy:infra  # Serverless: S3 + CloudFront stack (first time / infra changes)
+pnpm deploy:client # Build + upload dist/ + CloudFront invalidation
 ```
 
 ---
@@ -285,7 +346,7 @@ const renderWithProviders = (ui: ReactNode) => {
 
 | Variable | Required | Description |
 |---|---|---|
-| `VITE_API_BASE_URL` | Yes | Backend API root, e.g. `http://localhost:4000/api/v1` |
+| `VITE_API_BASE_URL` | Yes | Backend API root, **no trailing slash**. Local: e.g. `http://localhost:3001` (serverless-offline). Production: API Gateway invoke URL from `serverless deploy` output. |
 
 Copy from `.env.example`:
 
