@@ -120,6 +120,32 @@ functions:
           method: DELETE
           path: /expenses/{expenseId}
 
+  # ── Goals ───────────────────────────────────────────────────────────────
+  goalsGet:
+    handler: src/handlers/goals/get.handler
+    events:
+      - httpApi:
+          method: GET
+          path: /goals
+  goalsCreate:
+    handler: src/handlers/goals/create.handler
+    events:
+      - httpApi:
+          method: POST
+          path: /goals
+  goalsUpdate:
+    handler: src/handlers/goals/update.handler
+    events:
+      - httpApi:
+          method: PUT
+          path: /goals
+  goalsDelete:
+    handler: src/handlers/goals/delete.handler
+    events:
+      - httpApi:
+          method: DELETE
+          path: /goals
+
   # ── Reports ───────────────────────────────────────────────────────────────
   reportsMonthly:
     handler: src/handlers/reports/monthly.handler

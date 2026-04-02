@@ -9,6 +9,7 @@ import {
   listExpensesByUser,
   updateExpenseByUser,
 } from '../repositories/expense.repository';
+import { recalculateGoalInsight } from './goals.service';
 
 export interface ListExpensesResult {
   expenses: Expense[];
@@ -47,6 +48,7 @@ export const createExpense = async (
   };
 
   await createExpenseInDb(item);
+  await recalculateGoalInsight(userId);
   return toExpense(item);
 };
 
@@ -82,6 +84,7 @@ export const updateExpense = async (
     updatedAt,
   });
 
+  await recalculateGoalInsight(userId);
   return toExpense(updated);
 };
 
@@ -90,5 +93,6 @@ export const deleteExpense = async (userId: string, expenseId: string): Promise<
   if (!existing) return false;
 
   await deleteExpenseByUser(userId, expenseId);
+  await recalculateGoalInsight(userId);
   return true;
 };

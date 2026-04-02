@@ -231,3 +231,31 @@ export const fetchAllExpensesInDateRange = async (
 
   return items;
 };
+
+/**
+ * Fetches all expenses for a given YYYY-MM month key via GSI2, paginating
+ * through any DynamoDB continuation tokens so callers get the full set.
+ */
+export const listExpensesByMonth = async (userId: string, monthKey: string): Promise<ExpenseItem[]> => {
+  const items: ExpenseItem[] = [];
+  let lastKey: Record<string, unknown> | undefined;
+
+  do {
+    const result = await docClient.send(
+      new QueryCommand({
+        TableName: TABLE_NAME,
+        IndexName: 'GSI2-UserExpenseDateIndex',
+        KeyConditionExpression: 'GSI2PK = :pk AND begins_with(GSI2SK, :prefix)',
+        ExpressionAttributeValues: {
+          ':pk': `USER#${userId}`,
+          ':prefix': `DATE#${monthKey}`,
+        },
+        ExclusiveStartKey: lastKey as never,
+      }),
+    );
+    items.push(...((result.Items ?? []) as ExpenseItem[]));
+    lastKey = result.LastEvaluatedKey as Record<string, unknown> | undefined;
+  } while (lastKey);
+
+  return items;
+};

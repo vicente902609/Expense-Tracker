@@ -1,6 +1,6 @@
 # Plan: Backend API — Expense Tracker
 
-**TL;DR:** Design a RESTful backend for the Personal Expense Tracker using Serverless Framework (16 Lambdas, one per route), a DynamoDB single-table design with 3 GSIs covering all access patterns, and a layered architecture (handler → service → repository).
+**TL;DR:** Design a RESTful backend for the Personal Expense Tracker using Serverless Framework (20 Lambdas, one per route), a DynamoDB single-table design with 3 GSIs covering all access patterns, and a layered architecture (handler → service → repository).
 
 ---
 
@@ -64,6 +64,15 @@ Predefined items are written by a one-shot seed script (`scripts/seed-categories
 | `GSI3SK` | `DATE#<YYYY-MM-DD>#<expenseId>` |
 | attrs | `expenseId`, `amount`, `description`, `categoryId`, `date`, `createdAt`, `updatedAt` |
 
+**Goal** *(1:1 with User — at most one goal per user)*
+| Attribute | Value |
+|---|---|
+| `PK` | `USER#<userId>` |
+| `SK` | `GOAL` |
+| attrs | `name` (string), `targetExpense` (number — monthly spending cap), `insight` (string), `insightUpdatedAt` (ISO string), `createdAt`, `updatedAt` |
+
+The fixed `SK=GOAL` enforces the 1:1 constraint at the data layer — a `PutItem` with `ConditionExpression: attribute_not_exists(SK)` on create prevents duplicates. No GSI needed; the item is always fetched directly by `PK=USER#<userId>, SK=GOAL`.
+
 ---
 
 ### Access Patterns Covered
@@ -82,6 +91,10 @@ Predefined items are written by a one-shot seed script (`scripts/seed-categories
 | 10 | List expenses by category | `Query GSI3 GSI3PK=USER#<id>#CAT#<catId>` |
 | 11 | List expenses by category + date range | `Query GSI3` + `GSI3SK` range filter |
 | 12 | Monthly spending totals | `Query GSI2 GSI2PK=USER#<id>, GSI2SK begins_with DATE#<YYYY-MM>` |
+| 13 | Get user's goal | `GetItem PK=USER#<id>, SK=GOAL` |
+| 14 | Create user's goal (enforce 1:1) | `PutItem PK=USER#<id>, SK=GOAL` with `attribute_not_exists(SK)` condition |
+| 15 | Update user's goal | `UpdateItem PK=USER#<id>, SK=GOAL` |
+| 16 | Delete user's goal | `DeleteItem PK=USER#<id>, SK=GOAL` |
 
 ---
 
@@ -113,6 +126,34 @@ Predefined items are written by a one-shot seed script (`scripts/seed-categories
 - `PUT /expenses/{expenseId}`
 - `DELETE /expenses/{expenseId}`
 
+**Goals** *(all require JWT; 1:1 per user)*
+- `GET /goals` — retrieve the authenticated user's goal; `404` if none exists; returns:
+  ```json
+  {
+    "name": "Monthly Budget",
+    "targetExpense": 2000,
+    "insight": "You're on track! Current spend ($1 420) is within your $2 000 target.",
+    "insightUpdatedAt": "2026-04-01T10:00:00.000Z",
+    "createdAt": "2026-03-01T09:00:00.000Z",
+    "updatedAt": "2026-04-01T10:00:00.000Z"
+  }
+  ```
+- `POST /goals` — create the user's goal; `409` if a goal already exists; body: `{ name* (1–80 chars), targetExpense* (positive) }`; triggers insight recalculation immediately; returns `201` with the created goal
+- `PUT /goals` — update `name` and/or `targetExpense`; body: `{ name? (1–80 chars), targetExpense? (positive) }` (at least one required); triggers insight recalculation; `404` if no goal exists
+- `DELETE /goals` — delete the user's goal; `404` if none; returns `204`
+
+  **Insight calculation** (runs in-Lambda synchronously on POST, PUT, and as a side-effect of POST/PUT/DELETE `/expenses`):
+  1. Query current-month expenses: `GSI2 GSI2PK=USER#<id>, GSI2SK begins_with DATE#<YYYY-MM>` where `YYYY-MM` is the current calendar month.
+  2. Query previous-month expenses: same GSI, `YYYY-MM` shifted one month back.
+  3. Sum totals and group by `categoryId`; resolve category names via `GetItem` or a cached `Query PK=USER#<id>, SK begins_with CAT#` + `Query PK=CATEGORY#PREDEFINED`.
+  4. Determine `status`:
+     - If `currentMonthTotal <= targetExpense` → **on track**: insight = `"You're on track! Current spend ($X) is within your $T target."`
+     - If `currentMonthTotal > targetExpense` → **over budget**: find the category with the largest spend delta vs the previous month; insight = `"You're over budget by $D. Consider reducing <CategoryName> expenses (↑$Δ vs last month) to stay within your $T target."`
+     - If `currentMonthTotal > targetExpense * 0.9` (within 10%) → **at risk**: insight = `"Heads up — you've used $X of your $T monthly target with X days remaining. Watch your <CategoryName> spending."`
+  5. Write updated `insight` + `insightUpdatedAt` back to the Goal item via `UpdateItem`.
+
+  **Side-effect trigger**: the `expenses.service.ts` calls `recalculateGoalInsight(userId)` at the end of `createExpense`, `updateExpense`, and `deleteExpense`. If the user has no goal, the call is a no-op.
+
 **Reports** *(all require JWT)*
 - `GET /reports/monthly?startDate=&endDate=` — spending totals per month
 - `GET /reports/by-category?startDate=&endDate=` — breakdown by category
@@ -135,7 +176,7 @@ Predefined items are written by a one-shot seed script (`scripts/seed-categories
 
 ---
 
-## Lambda Architecture (1 per route = 17 functions)
+## Lambda Architecture (1 per route = 20 functions)
 
 Each handler is a thin entry point — parses input, calls service, returns HTTP response.
 
@@ -145,14 +186,16 @@ packages/new-backend/src/
     auth/          register.ts  login.ts  refresh.ts  logout.ts
     categories/    list.ts  create.ts  update.ts  delete.ts
     expenses/      list.ts  create.ts  get.ts  update.ts  delete.ts
+    goals/         get.ts  create.ts  update.ts  delete.ts
     reports/       monthly.ts  by-category.ts
     ai/            parse-expense.ts
   services/        auth.service.ts  categories.service.ts
-                   expenses.service.ts  reports.service.ts  ai.service.ts
+                   expenses.service.ts  goals.service.ts
+                   reports.service.ts  ai.service.ts
   repositories/    user.repository.ts  category.repository.ts
-                   expense.repository.ts
+                   expense.repository.ts  goal.repository.ts
   middleware/      auth.ts (JWT Middy)  error.ts (centralised error handler)
-  models/          user.ts  expense.ts  category.ts  common.ts
+  models/          user.ts  expense.ts  category.ts  goal.ts  common.ts
   lib/             dynamo.ts  jwt.ts  response.ts  validation.ts (Zod)
                    openai/
                      client.ts          (generic callOpenAI<T>, OpenAICallOptions, error constants)
@@ -195,7 +238,8 @@ packages/new-backend/src/
 - `packages/new-backend/src/lib/dynamo.ts` — singleton `DynamoDBDocumentClient`
 - `packages/new-backend/src/repositories/*.ts` — all DynamoDB queries
 - `packages/new-backend/src/services/*.ts` — business logic
-- `packages/new-backend/src/handlers/**/*.ts` — 16 thin Lambda handlers
+- `packages/new-backend/src/handlers/**/*.ts` — 20 thin Lambda handlers
+- `packages/new-backend/src/models/goal.ts` — `Goal` interface (`name`, `targetExpense`, `insight`, `insightUpdatedAt`, `createdAt`, `updatedAt`)
 - `packages/new-backend/src/middleware/auth.ts` — Middy JWT middleware
 - `packages/new-backend/src/models/*.ts` — TypeScript interfaces
 - `packages/new-backend/src/scripts/seed-categories.ts` — one-shot `BatchWriteItem` script seeding 13 predefined category items under `PK=CATEGORY#PREDEFINED`; idempotent (condition: `attribute_not_exists(PK)`)
@@ -209,11 +253,12 @@ packages/new-backend/src/
 1. `tsc --noEmit` — zero type errors
 2. `eslint --fix src` — zero lint warnings
 3. `pnpm test` — unit tests for all services + repositories pass
-4. `serverless offline` — all 16 routes respond correctly locally
+4. `serverless offline` — all 20 routes respond correctly locally
 5. Run `pnpm seed` (in `packages/new-backend`) — 13 predefined category items written to DynamoDB; re-run is a no-op
 6. Manual test: `GET /categories` → `predefined` array contains 13 items, `custom` array is empty for a new user
 7. Manual test: register → login → create category → create expense → list with date filter → check reports endpoint
-8. `serverless deploy --stage dev` — successful AWS deployment, API Gateway URL works end-to-end
+8. Manual test: `POST /goals` → `GET /goals` returns goal with insight; `POST /expenses` (new expense) → `GET /goals` returns updated `insight` and `insightUpdatedAt`; `DELETE /goals` → `GET /goals` returns `404`
+9. `serverless deploy --stage dev` — successful AWS deployment, API Gateway URL works end-to-end
 
 ---
 
@@ -222,3 +267,6 @@ packages/new-backend/src/
 1. **Pagination cursor** — `GET /expenses` uses DynamoDB `LastEvaluatedKey` (base64-encoded) as cursor; `limit` defaults to 50. Frontend passes `cursor=<token>` for next page.
 2. **Category deletion guard** — when deleting a custom category, decide whether to reject if expenses reference it, or allow deletion (expenses keep `categoryId` as orphan ref). Recommendation: allow deletion, frontend shows "Unknown" for orphaned refs.
 3. **Report aggregation** — `reports/monthly` and `reports/by-category` aggregate in Lambda (no DynamoDB stream/aggregation pipeline needed at this scale). Fine for free-tier usage.
+4. **Goal insight side-effect cost** — `POST /expenses`, `PUT /expenses/:id`, and `DELETE /expenses/:id` each trigger a synchronous `recalculateGoalInsight` call that runs two GSI2 range queries (current + previous month) plus category name lookups. At free-tier scale this is negligible; consider skipping the recalc on `DELETE` if latency is a concern.
+5. **Goal uniqueness enforcement** — `POST /goals` uses `ConditionExpression: attribute_not_exists(SK)` on the DynamoDB `PutItem`. If the condition fails, return `409 Conflict` with message `"A goal already exists for this user. Use PUT /goals to update it."`
+6. **Insight staleness** — `insightUpdatedAt` is stored alongside `insight` so clients can show "last updated X minutes ago" if needed; no scheduled recalculation is required.
