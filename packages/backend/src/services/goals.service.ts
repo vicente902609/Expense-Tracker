@@ -26,11 +26,14 @@ const getMonthKeys = (now = new Date()): { current: string; prev: string } => {
   return { current, prev };
 };
 
-const getDaysRemainingInMonth = (now = new Date()): number => {
+const getTotalDaysInMonth = (now = new Date()): number => {
   const year = now.getUTCFullYear();
   const month = now.getUTCMonth() + 1;
-  const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
-  return Math.max(0, daysInMonth - now.getUTCDate());
+  return new Date(Date.UTC(year, month, 0)).getUTCDate();
+};
+
+const getDaysRemainingInMonth = (now = new Date()): number => {
+  return Math.max(0, getTotalDaysInMonth(now) - now.getUTCDate());
 };
 
 // ─── Insight builder ──────────────────────────────────────────────────────────
@@ -46,11 +49,20 @@ const fmt = (n: number): string => {
 const buildFallbackInsight = (
   targetExpense: number,
   currentTotal: number,
+  totalDays: number,
   daysRemaining: number,
   topCatName: string,
 ): string => {
   if (currentTotal > targetExpense) {
     return `You're over budget by $${fmt(currentTotal - targetExpense)}. Consider reducing ${topCatName} expenses to stay within your $${fmt(targetExpense)} target.`;
+  }
+  const daysElapsed = Math.max(1, totalDays - daysRemaining);
+  const avgDailySpend = currentTotal / daysElapsed;
+  const allowedDailySpend = targetExpense / totalDays;
+  if (avgDailySpend > allowedDailySpend) {
+    const projectedTotal = avgDailySpend * totalDays;
+    const dailyLimit = daysRemaining > 0 ? fmt((targetExpense - currentTotal) / daysRemaining) : '0';
+    return `⚠️ You're spending $${fmt(avgDailySpend)}/day on average — above your $${fmt(allowedDailySpend)}/day target (projected: $${fmt(projectedTotal)}). Reduce ${topCatName} and keep daily spend under $${dailyLimit} to finish on budget.`;
   }
   if (currentTotal > targetExpense * 0.9) {
     return `Heads up — you've used $${fmt(currentTotal)} of your $${fmt(targetExpense)} monthly target with ${daysRemaining} day${daysRemaining === 1 ? '' : 's'} remaining. Watch your ${topCatName} spending.`;
@@ -96,6 +108,7 @@ export const recalculateGoalInsight = async (userId: string): Promise<void> => {
 
   const currentMonthTotal = currentExpenses.reduce((sum, e) => sum + e.amount, 0);
   const prevMonthTotal = prevExpenses.reduce((sum, e) => sum + e.amount, 0);
+  const totalDaysInMonth = getTotalDaysInMonth();
   const daysRemaining = getDaysRemainingInMonth();
 
   // Determine top category name for fallback
@@ -112,6 +125,7 @@ export const recalculateGoalInsight = async (userId: string): Promise<void> => {
     targetExpense: goal.targetExpense,
     currentMonthTotal,
     prevMonthTotal,
+    totalDaysInMonth,
     daysRemainingInMonth: daysRemaining,
     categories: [...currentByCategory.entries()].map(([catId, currentAmount]) => ({
       name: categoryNameMap.get(catId) ?? 'Other',
@@ -126,16 +140,16 @@ export const recalculateGoalInsight = async (userId: string): Promise<void> => {
   let insight: string;
 
   if (!apiKey || !model) {
-    insight = buildFallbackInsight(goal.targetExpense, currentMonthTotal, daysRemaining, topCatName);
+    insight = buildFallbackInsight(goal.targetExpense, currentMonthTotal, totalDaysInMonth, daysRemaining, topCatName);
   } else {
     try {
       const result = await callOpenAI<InsightExpenseModel>(
         buildInsightExpenseOptions(promptData, apiKey, model),
       );
       insight = result?.insight?.trim() ||
-        buildFallbackInsight(goal.targetExpense, currentMonthTotal, daysRemaining, topCatName);
+        buildFallbackInsight(goal.targetExpense, currentMonthTotal, totalDaysInMonth, daysRemaining, topCatName);
     } catch {
-      insight = buildFallbackInsight(goal.targetExpense, currentMonthTotal, daysRemaining, topCatName);
+      insight = buildFallbackInsight(goal.targetExpense, currentMonthTotal, totalDaysInMonth, daysRemaining, topCatName);
     }
   }
 
