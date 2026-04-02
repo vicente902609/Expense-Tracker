@@ -4,7 +4,7 @@ import type {
   ListExpensesQuery,
   ListExpensesResponse,
   UpdateExpenseBody,
-} from "@expense-tracker/shared";
+} from "@/types";
 
 import { apiRequest } from "@/api/client";
 

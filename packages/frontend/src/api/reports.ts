@@ -1,4 +1,4 @@
-import type { ByCategoryReportResponse, MonthlyReportResponse } from "@expense-tracker/shared";
+import type { ByCategoryReportResponse, MonthlyReportResponse } from "@/types";
 
 import { apiRequest } from "@/api/client";
 

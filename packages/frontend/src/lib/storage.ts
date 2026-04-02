@@ -1,4 +1,4 @@
-import type { PublicUser } from "@expense-tracker/shared";
+import type { PublicUser } from "@/types";
 
 export const AUTH_STORAGE_KEYS = {
   access: "expense-tracker-access-token",

@@ -1,4 +1,4 @@
-import type { ParsedExpense } from "@expense-tracker/shared";
+import type { ParsedExpense } from "@/types";
 
 import { apiRequest } from "@/api/client";
 import { formatLocalIsoDate } from "@/lib/expense-ui";
