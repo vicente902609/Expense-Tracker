@@ -124,11 +124,15 @@ export const apiRequest = async <T>(path: string, options: RequestOptions = {}, 
 
   const json = await response.json().catch(() => null);
 
-  if (response.status === 401 && !retried && !isPublicAuthPath(path) && authStorage.getRefreshToken()) {
-    const refreshed = await postRefresh();
-    if (refreshed) {
-      return apiRequest<T>(path, options, true);
+  if (response.status === 401 && !retried && !isPublicAuthPath(path)) {
+    if (authStorage.getRefreshToken()) {
+      const refreshed = await postRefresh();
+      if (refreshed) {
+        return apiRequest<T>(path, options, true);
+      }
+      throw new Error("Session expired. Please sign in again.");
     }
+    forceSignOut();
     throw new Error("Session expired. Please sign in again.");
   }
 
@@ -153,11 +157,15 @@ export const apiGetAllow404 = async <T>(path: string, retried = false): Promise<
 
   const json = await response.json().catch(() => null);
 
-  if (response.status === 401 && !retried && !isPublicAuthPath(path) && authStorage.getRefreshToken()) {
-    const refreshed = await postRefresh();
-    if (refreshed) {
-      return apiGetAllow404<T>(path, true);
+  if (response.status === 401 && !retried && !isPublicAuthPath(path)) {
+    if (authStorage.getRefreshToken()) {
+      const refreshed = await postRefresh();
+      if (refreshed) {
+        return apiGetAllow404<T>(path, true);
+      }
+      throw new Error("Session expired. Please sign in again.");
     }
+    forceSignOut();
     throw new Error("Session expired. Please sign in again.");
   }
 
