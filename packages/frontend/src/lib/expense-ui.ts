@@ -1,4 +1,4 @@
-import { expenseCategoryValues, type Expense } from "@expense-tracker/shared";
+import { expenseCategoryValues, type Expense } from "@/types";
 
 export const predefinedCategories = expenseCategoryValues;
 

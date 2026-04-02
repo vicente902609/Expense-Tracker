@@ -5,7 +5,7 @@
   "packageManager": "pnpm@10.0.0",
   "scripts": {
     "build": "pnpm -r build",
-    "dev": "pnpm --filter --filter @expense-tracker/frontend dev",
+    "dev": "pnpm --filter @expense-tracker/frontend dev",
     "seed": "pnpm --filter @expense-tracker/backend seed",
     "lint": "pnpm -r lint",
     "lint:fix": "eslint packages/backend/src packages/frontend/src packages/shared/src --fix --max-warnings=0",

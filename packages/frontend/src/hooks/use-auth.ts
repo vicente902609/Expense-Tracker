@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { AuthSessionData, PublicUser } from "@expense-tracker/shared";
+import type { AuthSessionData, PublicUser } from "@/types";
 
 import { logout as logoutApi } from "@/api/auth";
 import { AUTH_STORAGE_KEYS, authStorage } from "@/lib/storage";

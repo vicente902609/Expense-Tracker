@@ -1,8 +1,6 @@
 import { useState } from "react";
 import {
-  Box,
   Button,
-  Chip,
   Dialog,
   DialogActions,
   DialogContent,
@@ -11,7 +9,6 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { alpha } from "@mui/material/styles";
 
 import {
   formatDateRangeLabel,
@@ -21,6 +18,7 @@ import {
   type DateFilterScope,
 } from "@/lib/date-filter";
 import { sectionLabelSx } from "@/theme/ui";
+import { ActiveRangeButton, FilterPresetChip, FilterRoot } from "./DateFilter.styles";
 
 export type DateFilterLabels = {
   today?: string;
@@ -57,9 +55,7 @@ type DateFilterProps = {
   labels?: DateFilterLabels;
   sectionLabel?: string;
   align?: "left" | "right";
-  /** Controls default ranges for presets and the custom-range modal baseline. */
   scope?: DateFilterScope;
-  /** Hide preset chips (e.g. Reports only shows “Last 6 months”, “This year”, and custom range). */
   presetVisibility?: DateFilterPresetVisibility;
 };
 
@@ -110,88 +106,44 @@ export const DateFilter = ({
 
   return (
     <>
-      <Box sx={{ width: { xs: "100%", sm: "auto" }, maxWidth: { sm: 420 }, alignSelf: { xs: "stretch", sm: "flex-start" } }}>
+      <FilterRoot>
         <Typography sx={(theme) => ({ ...sectionLabelSx(theme), mb: 1.25, ...textAlign })}>{sectionLabel}</Typography>
         <Stack spacing={1.5} sx={{ alignItems: align === "right" ? { xs: "stretch", sm: "flex-end" } : "stretch" }}>
           <Stack direction="row" flexWrap="wrap" gap={1} useFlexGap sx={justify}>
             {presetVisibility.today ? (
-              <Chip
+              <FilterPresetChip
                 label={labels.today}
                 onClick={() => onSelectPreset("today")}
                 color={kind === "today" ? "primary" : "default"}
                 variant={kind === "today" ? "filled" : "outlined"}
-                sx={{
-                  minHeight: 36,
-                  fontWeight: 600,
-                  borderColor: (theme) => alpha(theme.palette.common.white, 0.15),
-                  bgcolor: kind === "today" ? undefined : alpha("#ffffff", 0.04),
-                  "& .MuiChip-label": { px: 1.25 },
-                }}
               />
             ) : null}
             {presetVisibility.week ? (
-              <Chip
+              <FilterPresetChip
                 label={labels.week}
                 onClick={() => onSelectPreset("week")}
                 color={kind === "week" ? "primary" : "default"}
                 variant={kind === "week" ? "filled" : "outlined"}
-                sx={{
-                  minHeight: 36,
-                  fontWeight: 600,
-                  borderColor: (theme) => alpha(theme.palette.common.white, 0.15),
-                  bgcolor: kind === "week" ? undefined : alpha("#ffffff", 0.04),
-                  "& .MuiChip-label": { px: 1.25 },
-                }}
               />
             ) : null}
             {presetVisibility.month ? (
-              <Chip
+              <FilterPresetChip
                 label={labels.month}
                 onClick={() => onSelectPreset("month")}
                 color={kind === "month" ? "primary" : "default"}
                 variant={kind === "month" ? "filled" : "outlined"}
-                sx={{
-                  minHeight: 36,
-                  fontWeight: 600,
-                  borderColor: (theme) => alpha(theme.palette.common.white, 0.15),
-                  bgcolor: kind === "month" ? undefined : alpha("#ffffff", 0.04),
-                  "& .MuiChip-label": { px: 1.25 },
-                }}
               />
             ) : null}
             {kind === "range" ? (
-              <Button
-                variant="outlined"
-                color="primary"
-                onClick={openModal}
-                sx={{
-                  minHeight: 36,
-                  fontWeight: 600,
-                  textTransform: "none",
-                  px: 1.5,
-                  borderColor: (theme) => alpha(theme.palette.primary.main, 0.5),
-                }}
-              >
+              <ActiveRangeButton variant="outlined" color="primary" onClick={openModal}>
                 {formatDateRangeLabel(fromDate, toDate)}
-              </Button>
+              </ActiveRangeButton>
             ) : (
-              <Chip
-                label={labels.range}
-                onClick={openModal}
-                color="default"
-                variant="outlined"
-                sx={{
-                  minHeight: 36,
-                  fontWeight: 600,
-                  borderColor: (theme) => alpha(theme.palette.common.white, 0.15),
-                  bgcolor: alpha("#ffffff", 0.04),
-                  "& .MuiChip-label": { px: 1.25 },
-                }}
-              />
+              <FilterPresetChip label={labels.range} onClick={openModal} color="default" variant="outlined" />
             )}
           </Stack>
         </Stack>
-      </Box>
+      </FilterRoot>
 
       <Dialog open={modalOpen} onClose={() => setModalOpen(false)} fullWidth maxWidth="xs">
         <DialogTitle>Custom date range</DialogTitle>

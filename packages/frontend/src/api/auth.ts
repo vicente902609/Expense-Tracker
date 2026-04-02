@@ -1,4 +1,4 @@
-import type { AuthSessionData, LoginBody, RegisterBody } from "@expense-tracker/shared";
+import type { AuthSessionData, LoginBody, RegisterBody } from "@/types";
 
 import { apiRequest } from "@/api/client";
 import { authStorage } from "@/lib/storage";

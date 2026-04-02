@@ -1,13 +1,13 @@
-import { AuthView } from "@/features/auth/AuthView";
-import { TrackerShell } from "@/features/app/TrackerShell";
+import { AppLayout } from "@/app/AppLayout";
+import { AuthPage } from "@/pages/auth/AuthPage";
 import { useAuth } from "@/hooks/use-auth";
 
 export const App = () => {
   const auth = useAuth();
 
   if (!auth.isAuthenticated || !auth.user) {
-    return <AuthView onAuthenticated={auth.saveSession} />;
+    return <AuthPage onAuthenticated={auth.saveSession} />;
   }
 
-  return <TrackerShell onLogout={auth.logout} />;
+  return <AppLayout onLogout={auth.logout} />;
 };

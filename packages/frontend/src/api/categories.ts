@@ -1,4 +1,4 @@
-import type { CategoriesListResponse, CustomCategoryApi } from "@expense-tracker/shared";
+import type { CategoriesListResponse, CustomCategoryApi } from "@/types";
 
 import { apiRequest } from "@/api/client";
 

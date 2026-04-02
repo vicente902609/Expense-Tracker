@@ -1,4 +1,4 @@
-import type { Goal, GoalCreateBody, GoalUpdateBody } from "@expense-tracker/shared";
+import type { Goal, GoalCreateBody, GoalUpdateBody } from "@/types";
 
 import { apiGetAllow404, apiRequest } from "@/api/client";
 

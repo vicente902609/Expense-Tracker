@@ -1,4 +1,4 @@
-import type { CategoriesListResponse, CustomCategoryApi } from "@expense-tracker/shared";
+import type { CategoriesListResponse, CustomCategoryApi } from "@/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { addCustomCategory, deleteCustomCategory, listCategories, updateCustomCategory } from "@/api/categories";
