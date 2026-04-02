@@ -4,13 +4,14 @@ import AddRoundedIcon from "@mui/icons-material/AddRounded";
 
 import type { Expense } from "@/types";
 import { listExpensesPage } from "@/api/expenses";
+import { CategoryChip } from "@/components/CategoryChip";
 import { DateFilter } from "@/components/DateFilter";
 import { ExpenseRow } from "@/components/ExpenseRow";
 import { formatDateRangeLabel } from "@/lib/date-filter";
 import { type CategoryPaletteEntry, formatCurrency, getCategoryColor } from "@/lib/expense-ui";
 import { sectionLabelSx } from "@/theme/ui";
 import { useExpenseListFilters } from "./hooks/use-expense-filters";
-import { CategoryFilterChip, ExpenseListCard, PageHeaderRow } from "./ExpensesPage.styles";
+import { ExpenseListCard, PageHeaderRow } from "./ExpensesPage.styles";
 
 const PAGE_SIZE = 10;
 
@@ -93,13 +94,12 @@ export const ExpensesPage = ({
               category === "All" ? "" : (categoryPalette.find((e) => e.name === category)?.categoryId ?? "");
             const accent = category === "All" ? undefined : getCategoryColor(idForChip, categoryPalette);
             return (
-              <CategoryFilterChip
+              <CategoryChip
                 key={category}
                 label={category}
+                accentColor={accent}
+                selected={selected}
                 onClick={() => setSelectedCategory(category)}
-                color={selected ? "primary" : "default"}
-                variant={selected ? "filled" : "outlined"}
-                $accentColor={selected ? undefined : accent}
               />
             );
           })}

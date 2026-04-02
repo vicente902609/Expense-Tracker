@@ -1,6 +1,6 @@
 import { formatLocalIsoDate, formatShortDate } from "@/lib/expense-ui";
 
-export type DateFilterKind = "today" | "week" | "month" | "range";
+export type DateFilterKind = "day" | "week" | "month" | "range";
 
 /** Expenses list: MTD / week-to-date / today. Reports: wider windows for chart aggregation. */
 export type DateFilterScope = "expenses" | "reports";
@@ -20,15 +20,15 @@ export const mondayOfWeekLocal = (d: Date) => {
 
 /**
  * Reports presets (see Reports UI):
- * - `month` → last ~6 calendar months (first day of month five months ago through today)
- * - `week` → **this calendar year** (Jan 1 through today) — label in UI is “This year”
- * - `today` → unused when the “Today” chip is hidden; kept for typing compatibility
+ * - `month` -> last ~6 calendar months (first day of month five months ago through today)
+ * - `week`  -> this calendar year (Jan 1 through today)
+ * - `day`   -> unused when the "Today" chip is hidden; kept for typing compatibility
  */
 export const getReportsRangeForKind = (kind: Exclude<DateFilterKind, "range">): { from: string; to: string } => {
   const today = new Date();
   const todayIso = formatLocalIsoDate(today);
 
-  if (kind === "today") {
+  if (kind === "day") {
     const start = new Date(today.getFullYear(), today.getMonth() - 5, 1);
     return { from: formatLocalIsoDate(start), to: todayIso };
   }
@@ -53,7 +53,7 @@ export const getRangeForKind = (
   const today = new Date();
   const todayIso = formatLocalIsoDate(today);
 
-  if (kind === "today") {
+  if (kind === "day") {
     return { from: todayIso, to: todayIso };
   }
 

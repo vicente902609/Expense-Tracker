@@ -1,6 +1,5 @@
 import { styled } from "@mui/material/styles";
-import { alpha } from "@mui/material/styles";
-import { Box, Chip } from "@mui/material";
+import { Box } from "@mui/material";
 
 import { surfaceCard } from "@/theme/ui";
 
@@ -21,30 +20,3 @@ export const PageHeaderRow = styled(Box)({
     gap: 20,
   },
 });
-
-export const CategoryFilterChip = styled(Chip, {
-  shouldForwardProp: (prop) => prop !== "$accentColor",
-})<{ $accentColor?: string }>(({ theme, $accentColor }) => ({
-  flexShrink: 0,
-  minHeight: 40,
-  fontWeight: 600,
-  "&.MuiChip-colorDefault": {
-    borderColor: alpha(theme.palette.common.white, 0.15),
-    backgroundColor: alpha("#ffffff", 0.04),
-  },
-  ...$accentColor
-    ? {
-        borderLeft: `3px solid ${$accentColor}`,
-        paddingLeft: theme.spacing(1.25),
-        "& .MuiChip-label": {
-          paddingLeft: theme.spacing(1.5),
-          paddingRight: theme.spacing(1.5),
-        },
-      }
-    : {
-        "& .MuiChip-label": {
-          paddingLeft: theme.spacing(1.5),
-          paddingRight: theme.spacing(1.5),
-        },
-      },
-}));

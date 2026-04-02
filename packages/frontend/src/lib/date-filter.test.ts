@@ -23,11 +23,11 @@ describe("date-filter", () => {
     expect(monday.getDate()).toBe(30);
   });
 
-  it("builds today range for expenses", () => {
+  it("builds day range for expenses", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-04-02T10:00:00.000Z"));
 
-    expect(getRangeForKind("today", "expenses")).toEqual({
+    expect(getRangeForKind("day", "expenses")).toEqual({
       from: "2026-04-02",
       to: "2026-04-02",
     });

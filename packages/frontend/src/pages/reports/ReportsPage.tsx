@@ -3,7 +3,7 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Box, CircularProgress, Stack, Tooltip, Typography } from "@mui/material";
 
 import { fetchByCategoryReport, fetchMonthlyReport } from "@/api/reports";
-import { DateFilter } from "@/components/DateFilter";
+import { DateFilter, type DateFilterDisabledPresets } from "@/components/DateFilter";
 import { useDateFilter } from "@/hooks/use-date-filter";
 import { formatDateRangeLabel, type DateFilterKind } from "@/lib/date-filter";
 import {
@@ -30,9 +30,13 @@ type ReportsPageProps = {
   categoryPalette: readonly CategoryPaletteEntry[];
 };
 
+const REPORTS_DISABLED_PRESETS: DateFilterDisabledPresets = {
+  day: "Coming soon — daily breakdowns are on the way!",
+  week: "Coming soon — weekly breakdowns are on the way!",
+};
+
 const chartTitleForKind = (kind: DateFilterKind) => {
   if (kind === "month") return "Last 6 months";
-  if (kind === "week") return "This year";
   if (kind === "range") return "Custom range";
   return "Selected range";
 };
@@ -101,8 +105,9 @@ export const ReportsPage = ({ categoryPalette }: ReportsPageProps) => {
           align="right"
           fromDate={fromDate}
           kind={kind}
-          labels={{ week: "This year", month: "Last 6 months", range: "Date range" }}
-          presetVisibility={{ today: false, week: true, month: true }}
+          labels={{ day: "This week", week: "This month", month: "Last 6 months", range: "Date range" }}
+          presetVisibility={{ day: true, week: true, month: true }}
+          disabledPresets={REPORTS_DISABLED_PRESETS}
           scope="reports"
           toDate={toDate}
           onApplyRange={applyCustomRange}

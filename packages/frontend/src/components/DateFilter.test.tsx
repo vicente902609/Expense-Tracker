@@ -22,7 +22,7 @@ describe("DateFilter", () => {
 
     await user.click(screen.getByRole("button", { name: "Today" }));
 
-    expect(onSelectPreset).toHaveBeenCalledWith("today");
+    expect(onSelectPreset).toHaveBeenCalledWith("day");
   });
 
   it("shows validation error for invalid custom range", async () => {

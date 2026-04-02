@@ -7,6 +7,7 @@ import {
   DialogTitle,
   Stack,
   TextField,
+  Tooltip,
   Typography,
 } from "@mui/material";
 
@@ -21,27 +22,30 @@ import { sectionLabelSx } from "@/theme/ui";
 import { ActiveRangeButton, FilterPresetChip, FilterRoot } from "./DateFilter.styles";
 
 export type DateFilterLabels = {
-  today?: string;
+  day?: string;
   week?: string;
   month?: string;
   range?: string;
 };
 
 const defaultLabels: Required<DateFilterLabels> = {
-  today: "Today",
+  day: "Today",
   week: "This week",
   month: "This month",
   range: "Date range",
 };
 
 export type DateFilterPresetVisibility = {
-  today?: boolean;
+  day?: boolean;
   week?: boolean;
   month?: boolean;
 };
 
+/** Maps a preset key to a tooltip message shown when the preset is disabled. */
+export type DateFilterDisabledPresets = Partial<Record<Exclude<DateFilterKind, "range">, string>>;
+
 const defaultPresetVisibility: Required<DateFilterPresetVisibility> = {
-  today: true,
+  day: true,
   week: true,
   month: true,
 };
@@ -57,6 +61,36 @@ type DateFilterProps = {
   align?: "left" | "right";
   scope?: DateFilterScope;
   presetVisibility?: DateFilterPresetVisibility;
+  disabledPresets?: DateFilterDisabledPresets;
+};
+
+const renderPreset = (
+  presetKey: Exclude<DateFilterKind, "range">,
+  label: string,
+  isActive: boolean,
+  onSelectPreset: (next: Exclude<DateFilterKind, "range">) => void,
+  disabledTooltip?: string,
+) => {
+  const chip = (
+    <FilterPresetChip
+      label={label}
+      onClick={disabledTooltip ? undefined : () => onSelectPreset(presetKey)}
+      color={isActive ? "primary" : "default"}
+      variant={isActive ? "filled" : "outlined"}
+      disabled={Boolean(disabledTooltip)}
+    />
+  );
+
+  if (disabledTooltip) {
+    return (
+      <Tooltip key={presetKey} title={disabledTooltip} arrow placement="top">
+        {/* span wrapper required — disabled elements don't fire mouse events for Tooltip */}
+        <span>{chip}</span>
+      </Tooltip>
+    );
+  }
+
+  return <span key={presetKey}>{chip}</span>;
 };
 
 export const DateFilter = ({
@@ -70,6 +104,7 @@ export const DateFilter = ({
   align = "left",
   scope = "expenses",
   presetVisibility: presetVisibilityProp,
+  disabledPresets,
 }: DateFilterProps) => {
   const labels = { ...defaultLabels, ...labelsProp };
   const presetVisibility = { ...defaultPresetVisibility, ...presetVisibilityProp };
@@ -110,30 +145,15 @@ export const DateFilter = ({
         <Typography sx={(theme) => ({ ...sectionLabelSx(theme), mb: 1.25, ...textAlign })}>{sectionLabel}</Typography>
         <Stack spacing={1.5} sx={{ alignItems: align === "right" ? { xs: "stretch", sm: "flex-end" } : "stretch" }}>
           <Stack direction="row" flexWrap="wrap" gap={1} useFlexGap sx={justify}>
-            {presetVisibility.today ? (
-              <FilterPresetChip
-                label={labels.today}
-                onClick={() => onSelectPreset("today")}
-                color={kind === "today" ? "primary" : "default"}
-                variant={kind === "today" ? "filled" : "outlined"}
-              />
-            ) : null}
-            {presetVisibility.week ? (
-              <FilterPresetChip
-                label={labels.week}
-                onClick={() => onSelectPreset("week")}
-                color={kind === "week" ? "primary" : "default"}
-                variant={kind === "week" ? "filled" : "outlined"}
-              />
-            ) : null}
-            {presetVisibility.month ? (
-              <FilterPresetChip
-                label={labels.month}
-                onClick={() => onSelectPreset("month")}
-                color={kind === "month" ? "primary" : "default"}
-                variant={kind === "month" ? "filled" : "outlined"}
-              />
-            ) : null}
+            {presetVisibility.day
+              ? renderPreset("day", labels.day, kind === "day", onSelectPreset, disabledPresets?.day)
+              : null}
+            {presetVisibility.week
+              ? renderPreset("week", labels.week, kind === "week", onSelectPreset, disabledPresets?.week)
+              : null}
+            {presetVisibility.month
+              ? renderPreset("month", labels.month, kind === "month", onSelectPreset, disabledPresets?.month)
+              : null}
             {kind === "range" ? (
               <ActiveRangeButton variant="outlined" color="primary" onClick={openModal}>
                 {formatDateRangeLabel(fromDate, toDate)}
