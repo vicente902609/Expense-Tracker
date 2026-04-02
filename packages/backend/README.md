@@ -272,4 +272,4 @@ packages/backend/src/
 ## Future improvements
 
 1. **Secret Manager** — Use AWS Secrets Manager to store sensitive environment variables like `JWT_SECRET` and `REFRESH_TOKEN_SECRET` instead of hardcoding them in `.env` files.
-2. **
+2. **AWS Cognito**  — Offload user authentication and token management to AWS Cognito for a more secure and scalable solution, reducing custom auth code and leveraging built-in features like password policies, MFA, and social logins.
