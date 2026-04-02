@@ -27,7 +27,7 @@ export default [
     },
   },
   {
-    files: ["packages/backend/src/**/*.ts", "packages/shared/src/**/*.ts"],
+    files: ["packages/backend/src/**/*.ts"],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: "module",

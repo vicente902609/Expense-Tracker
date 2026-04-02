@@ -1,6 +1,6 @@
 # Expense Tracker
 
-Personal expense tracker monorepo: **React + Vite + MUI** frontend, **Express + MongoDB** backend, shared **Zod** contracts. Includes **AI-assisted expense parsing** and **goal ETA forecasting**.
+Personal expense tracker monorepo: **React + Vite + MUI** frontend, **Express + MongoDB** backend. Includes **AI-assisted expense parsing** and **goal ETA forecasting**.
 
 **Repository:** `https://github.com/YOUR_USERNAME/Expense-Tracker` (replace with your fork)
 
@@ -23,14 +23,12 @@ Optional: **AWS CLI** only if you deploy to AWS later; not required for local de
 packages/
   backend/   Express API, MongoDB, auth, AI, goal forecasting
   frontend/  React app (Vite, MUI, React Query)
-  shared/    Shared types and Zod schemas
 ```
 
 ### Architecture (high level)
 
-- **Shared** (`@expense-tracker/shared`): request/response shapes and validation — single source of truth for API contracts.
 - **Backend**: `config/` (env), `middleware/` (auth, errors), `modules/*/repository.ts` (data access), `modules/*/service.ts` (rules), `modules/*/routes.ts` (HTTP).
-- **Frontend**: feature folders under `src/features/`, API clients under `src/api/`, theme and layout for responsive UI.
+- **Frontend**: `src/pages/` (page components), `src/api/` (API clients), `src/types/` (Zod schemas + TS types), `src/lib/` (utilities), theme and layout for responsive UI.
 
 ### Design choices
 
@@ -145,8 +143,6 @@ Send `Authorization: Bearer <token>` on protected routes.
 | CORS errors | `CLIENT_ORIGIN` must match the browser origin (scheme + host + port). |
 | Frontend “failed to fetch” | `VITE_API_BASE_URL` includes `/api/v1` and matches backend `PORT`. |
 | AI parse unavailable | `OPENAI_API_KEY` and `OPENAI_MODEL` set in **backend** `.env`; restart server. |
-| `@expense-tracker/shared` resolution | Use workspace `pnpm install`; shared exports TypeScript sources for dev. |
-
 ## License
 
 Private / assessment — adjust as needed.
