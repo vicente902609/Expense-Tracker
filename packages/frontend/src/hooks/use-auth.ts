@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { AuthSessionData, PublicUser } from "@/types";
 
 import { logout as logoutApi } from "@/api/auth";
+import { SESSION_EXPIRED_EVENT } from "@/api/client";
 import { AUTH_STORAGE_KEYS, authStorage } from "@/lib/storage";
 
 const readSessionFromStorage = (): { accessToken: string | null; user: PublicUser | null } => ({
@@ -13,6 +14,7 @@ export const useAuth = () => {
   const [{ accessToken, user }, setSession] = useState(readSessionFromStorage);
 
   useEffect(() => {
+    // Syncs session when another tab changes localStorage (e.g. login/logout elsewhere).
     const onStorage = (event: StorageEvent) => {
       if (
         event.key === AUTH_STORAGE_KEYS.access ||
@@ -22,8 +24,15 @@ export const useAuth = () => {
         setSession(readSessionFromStorage());
       }
     };
+    // Fires in the same tab when a 401 + failed refresh forces a sign-out.
+    const onSessionExpired = () => setSession({ accessToken: null, user: null });
+
     window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
+    window.addEventListener(SESSION_EXPIRED_EVENT, onSessionExpired);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener(SESSION_EXPIRED_EVENT, onSessionExpired);
+    };
   }, []);
 
   const saveSession = (session: AuthSessionData) => {

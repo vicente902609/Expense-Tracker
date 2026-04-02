@@ -69,6 +69,14 @@ const isPublicAuthPath = (path: string) => {
   );
 };
 
+/** Dispatched on `window` when the refresh attempt fails so `useAuth` can clear React state. */
+export const SESSION_EXPIRED_EVENT = "auth:session-expired" as const;
+
+const forceSignOut = () => {
+  authStorage.clearSession();
+  window.dispatchEvent(new CustomEvent(SESSION_EXPIRED_EVENT));
+};
+
 async function postRefresh(): Promise<boolean> {
   const refreshToken = authStorage.getRefreshToken();
   if (!refreshToken) {
@@ -84,7 +92,7 @@ async function postRefresh(): Promise<boolean> {
   const json = await response.json().catch(() => null);
 
   if (!response.ok) {
-    authStorage.clearSession();
+    forceSignOut();
     return false;
   }
 
@@ -98,7 +106,7 @@ async function postRefresh(): Promise<boolean> {
     // unwrap failed
   }
 
-  authStorage.clearSession();
+  forceSignOut();
   return false;
 }
 
