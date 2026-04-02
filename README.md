@@ -1,10 +1,23 @@
 # Expense Tracker
 
-Personal expense tracker monorepo: **React + Vite + MUI** frontend, **Express + MongoDB** backend. Includes **AI-assisted expense parsing** and **goal ETA forecasting**.
+Personal expense tracker monorepo: **React + Vite + MUI** frontend, **AWS Lambda + DynamoDB** backend. Includes **AI-assisted expense parsing** and **goal ETA forecasting**.
 
 **Repository:** `https://github.com/YOUR_USERNAME/Expense-Tracker` (replace with your fork)
 
 **Deployed:** add your production frontend/API URLs here when available.
+
+## Tech stack
+
+| Layer | Technology |
+|---|---|
+| Frontend | React 18, Vite 6, MUI v7, TanStack React Query v5 |
+| Frontend hosting | S3 + CloudFront (serverless-finch) |
+| Backend | AWS Lambda (Node.js 20.x), API Gateway (HTTP API) |
+| Database | DynamoDB (single-table design) |
+| Backend framework | Serverless Framework + serverless-esbuild |
+| Auth | JWT (access 15 min) + refresh tokens (7 days, stored in DynamoDB with TTL) |
+| Validation | Zod |
+| AI | OpenAI API (expense parsing, goal insights) |
 
 ## Prerequisites
 
@@ -12,137 +25,172 @@ Personal expense tracker monorepo: **React + Vite + MUI** frontend, **Express + 
 |------|-----------------|
 | Node.js | 20+ |
 | pnpm | 10+ (see `packageManager` in root `package.json`) |
-| MongoDB | Local instance or [MongoDB Atlas](https://www.mongodb.com/cloud/atlas) connection string |
-| OpenAI (optional) | API key for live NL expense parsing |
-
-Optional: **AWS CLI** only if you deploy to AWS later; not required for local dev.
+| AWS CLI | Configured with credentials that can deploy Lambda, API Gateway, DynamoDB, S3, CloudFront |
+| OpenAI (optional) | API key for live AI expense parsing and goal insights |
 
 ## Monorepo layout
 
 ```text
 packages/
-  backend/   Express API, MongoDB, auth, AI, goal forecasting
-  frontend/  React app (Vite, MUI, React Query)
+  backend/   AWS Lambda handlers, DynamoDB repositories, services, Middy middleware
+  frontend/  React app (Vite, MUI, React Query), deployed to S3 + CloudFront
 ```
 
 ### Architecture (high level)
 
-- **Backend**: `config/` (env), `middleware/` (auth, errors), `modules/*/repository.ts` (data access), `modules/*/service.ts` (rules), `modules/*/routes.ts` (HTTP).
-- **Frontend**: `src/pages/` (page components), `src/api/` (API clients), `src/types/` (Zod schemas + TS types), `src/lib/` (utilities), theme and layout for responsive UI.
+- **Backend**: 20 Lambda functions (one per route), thin handlers calling services, services calling repositories. Middy middleware handles JWT auth and error formatting. DynamoDB single-table with three GSIs covers all access patterns.
+- **Frontend**: `src/pages/` (page components + page-local hooks/dialogs), `src/api/` (API client functions), `src/types/` (Zod schemas + TS types), `src/lib/` (pure utilities), `src/theme/` for responsive dark UI.
 
 ### Design choices
 
-- **Zod at boundaries** — invalid payloads fail fast with clear messages.
-- **Server-side date hints** — calendar `referenceDate` + IANA `timezone` from the client; natural-language dates normalized with **chrono-node** where possible, with OpenAI for structured fields.
-- **Forecast `asOfIsoDate`** — optional parameter on `computeGoalForecast` for deterministic tests; production uses “today”.
+- **Zod at boundaries** — invalid payloads fail fast with clear field-level messages.
+- **Single-table DynamoDB** — all entities share one table; GSIs handle user-scoped, date-range, and category queries without secondary tables.
+- **Server-side date hints** — calendar `referenceDate` + IANA `timezone` from the client; natural-language dates resolved server-side with OpenAI.
+- **Forecast `asOfIsoDate`** — optional parameter on `computeGoalForecast` for deterministic tests; production always uses "today".
 
 ## Environment variables
 
-Use the **`.env.example`** files as copy-paste sources; each file lists variables with short comments.
-
-| File to create | Copy from |
-|----------------|-----------|
-| Repo root `.env` (optional) | `.env.example` |
-| `packages/backend/.env` | `packages/backend/.env.example` |
-| `packages/frontend/.env` | `packages/frontend/.env.example` |
-
-**Backend (required):** `MONGODB_URI`, `MONGODB_DB_NAME`, `JWT_SECRET` (min 16 characters), `CLIENT_ORIGIN`.  
-**Backend (optional):** `OPENAI_API_KEY`, `OPENAI_MODEL` — without them, AI parse returns a friendly error (logged server-side).
-
-**Frontend (required):** `VITE_API_BASE_URL` — must point at `/api/v1` on your backend.
-
-Invalid backend env vars throw on startup **after** a `console.error` with field-level detail. Missing `VITE_API_BASE_URL` throws at app load with a message pointing at `packages/frontend/.env.example`.
-
-## Setup (step by step)
-
-1. Install dependencies:
-
-   ```bash
-   pnpm install
-   ```
-
-2. Start MongoDB locally (or use Atlas and put the URI in `packages/backend/.env`).
-
-3. Copy env files:
-
-   ```bash
-   copy packages\backend\.env.example packages\backend\.env
-   copy packages\frontend\.env.example packages\frontend\.env
-   ```
-
-   Edit `JWT_SECRET`, and confirm `MONGODB_URI` / `VITE_API_BASE_URL`.
-
-4. Run migrations (creates indexes / collections):
-
-   ```bash
-   pnpm --filter @expense-tracker/backend migrate
-   ```
-
-5. Build (optional sanity check):
-
-   ```bash
-   pnpm run build
-   ```
-
-## Run locally
+Copy from the `.env.example` files in each package:
 
 ```bash
-pnpm run dev
+copy packages\backend\.env.example  packages\backend\.env
+copy packages\frontend\.env.example packages\frontend\.env
 ```
 
-- Frontend: `http://localhost:3000`
-- Backend: `http://localhost:4000` (or your `PORT`)
+**Backend** (`packages/backend/.env`):
+
+| Variable | Required | Description |
+|---|---|---|
+| `JWT_SECRET` | Yes | Access token signing secret — 32+ random characters |
+| `REFRESH_TOKEN_SECRET` | Yes | Refresh token signing secret — 32+ chars, different from `JWT_SECRET` |
+| `OPENAI_API_KEY` | No | Enables AI expense parsing and goal insights |
+| `OPENAI_MODEL` | No | e.g. `gpt-4o` or `gpt-4o-mini` |
+| `TABLE_NAME` | No | DynamoDB table name; Serverless sets it automatically to `expense-tracker-<stage>` |
+| `AWS_REGION` | No | Defaults to `us-east-1` |
+
+**Frontend** (`packages/frontend/.env`):
+
+| Variable | Required | Description |
+|---|---|---|
+| `VITE_API_BASE_URL` | Yes | API Gateway invoke URL, no trailing slash (e.g. `https://xxxx.execute-api.us-east-1.amazonaws.com`) |
+
+## Local development
+
+Install dependencies:
+
+```bash
+pnpm install
+```
+
+Start the backend with serverless-offline (spins up a local API Gateway + Lambda emulator):
+
+```bash
+pnpm --filter @expense-tracker/backend serverless offline
+```
+
+In a second terminal, start the frontend dev server:
+
+```bash
+pnpm dev   # http://localhost:3000
+```
+
+Set `VITE_API_BASE_URL` in `packages/frontend/.env` to the serverless-offline endpoint shown in its output.
+
+## Deployment
+
+### 1. Deploy backend (Lambda + DynamoDB + API Gateway)
+
+```bash
+pnpm deploy:backend
+# or: pnpm --filter @expense-tracker/backend deploy
+```
+
+This runs `serverless deploy` which provisions Lambda functions, API Gateway HTTP API, and the DynamoDB table via CloudFormation.
+
+### 2. Seed predefined categories (once after first deploy)
+
+```bash
+pnpm seed
+# or: pnpm --filter @expense-tracker/backend seed
+```
+
+Writes the 13 built-in categories to DynamoDB. Idempotent — safe to re-run.
+
+### 3. Deploy frontend (S3 + CloudFront)
+
+First deploy, provision the infrastructure:
+
+```bash
+pnpm deploy:frontend:infra
+```
+
+On every subsequent release, upload the built assets:
+
+```bash
+pnpm deploy:frontend:client
+```
+
+Or deploy both in one go:
+
+```bash
+pnpm deploy:frontend
+```
+
+Update `VITE_API_BASE_URL` in `packages/frontend/.env` to the API Gateway URL from step 1 before building.
 
 ## Quality checks
 
 ```bash
-pnpm run typecheck    # tsc --noEmit in all packages
-pnpm run lint         # eslint per package
-pnpm run lint:fix     # eslint --fix on all src trees
-pnpm test             # backend unit tests; shared/frontend placeholders
+pnpm typecheck   # tsc --noEmit in all packages
+pnpm lint        # eslint per package
+pnpm lint:fix    # eslint --fix on all src trees
+pnpm test        # Jest (backend) + Vitest (frontend)
 ```
 
 ## Testing
 
-Backend tests include goal forecast logic and natural-date parsing:
-
 ```bash
-pnpm --filter @expense-tracker/backend test
+pnpm --filter @expense-tracker/backend test   # Jest — services, repositories, goal forecast
+pnpm --filter @expense-tracker/frontend test  # Vitest — utilities, hooks, UI components
 ```
 
-## Core API (authenticated except `/auth/*`)
+## Core API
 
-- `POST /api/v1/auth/register`, `POST /api/v1/auth/login`
-- `GET/POST /api/v1/expenses`, `PUT/DELETE /api/v1/expenses/:id`
-- `GET/POST /api/v1/goals`
-- `GET /api/v1/categories`, `POST/PATCH/DELETE` for custom categories
-- `POST /api/v1/ai/parse-expense` — requires OpenAI config on the server
+All routes except `/auth/*` require `Authorization: Bearer <access-token>`.
 
-Send `Authorization: Bearer <token>` on protected routes.
-
-## Product expectations
-
-- **Responsive UI** — MUI breakpoints and touch-friendly targets.
-- **Loading & errors** — React Query mutations, alerts on failures, friendly AI error messages (no raw provider errors in UI).
-- **Forms** — shared Zod schemas; validation messages surfaced in dialogs.
-- **Logging** — `console.error` for config failures and unexpected AI paths (details server-side).
-
-## Deployment (outline)
-
-1. Host MongoDB (e.g. Atlas).
-2. Set production `packages/backend/.env` (or host env vars): `MONGODB_URI`, `JWT_SECRET`, `CLIENT_ORIGIN` to your frontend URL, `OPENAI_*` if using AI.
-3. Build frontend with `VITE_API_BASE_URL` pointing at your API.
-4. Run API behind HTTPS; keep CORS aligned with `CLIENT_ORIGIN`.
-5. Optional: port handlers to **AWS Lambda + API Gateway** — service/repository layers stay reusable.
+| Method | Path | Description |
+|---|---|---|
+| POST | `/auth/register` | Create account; returns tokens + user |
+| POST | `/auth/login` | Sign in; returns tokens + user |
+| POST | `/auth/refresh` | Exchange refresh token for a new pair |
+| POST | `/auth/logout` | Revoke refresh token |
+| GET | `/expenses` | Paginated list (query: `startDate`, `endDate`, `categoryId`, `limit`, `cursor`) |
+| POST | `/expenses` | Create expense |
+| PUT | `/expenses/{id}` | Update expense |
+| DELETE | `/expenses/{id}` | Delete expense |
+| GET | `/categories` | Predefined + user custom categories |
+| POST | `/categories` | Create custom category |
+| PUT | `/categories/{id}` | Update custom category |
+| DELETE | `/categories/{id}` | Delete custom category |
+| GET | `/goals` | Get user's goal (`404` if none) |
+| POST | `/goals` | Create goal (one per user) |
+| PUT | `/goals` | Update goal |
+| DELETE | `/goals` | Delete goal |
+| GET | `/reports/monthly` | Monthly spending totals |
+| GET | `/reports/by-category` | Breakdown by category |
+| POST | `/ai/parse-expense` | Parse natural-language expense description with OpenAI |
 
 ## Troubleshooting
 
 | Issue | What to check |
 |-------|----------------|
-| Backend exits on start | `packages/backend/.env` — Zod error lists missing/invalid fields. |
-| CORS errors | `CLIENT_ORIGIN` must match the browser origin (scheme + host + port). |
-| Frontend “failed to fetch” | `VITE_API_BASE_URL` includes `/api/v1` and matches backend `PORT`. |
-| AI parse unavailable | `OPENAI_API_KEY` and `OPENAI_MODEL` set in **backend** `.env`; restart server. |
+| Backend Lambda errors on deploy | Ensure AWS credentials are configured and have the required IAM permissions (Lambda, API Gateway, DynamoDB, CloudFormation, IAM, S3). |
+| `VITE_API_BASE_URL` wrong | Copy the API Gateway URL from the `serverless deploy` output; no trailing slash, no path prefix. |
+| Frontend "failed to fetch" | Confirm `VITE_API_BASE_URL` matches the API Gateway invoke URL. Check browser network tab for CORS errors. |
+| AI parse unavailable | Set `OPENAI_API_KEY` and `OPENAI_MODEL` in `packages/backend/.env`; redeploy. Without them the endpoint returns `503`. |
+| Categories list empty | Run `pnpm seed` after the first backend deploy to write predefined categories to DynamoDB. |
+| CORS errors | The backend `serverless.yml` enables CORS on the HTTP API globally; verify the stage was deployed after any CORS config changes. |
+
 ## License
 
-Private / assessment — adjust as needed.
+Private — adjust as needed.
