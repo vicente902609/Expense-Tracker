@@ -1,6 +1,4 @@
-# Plan: Backend API — Expense Tracker
-
-**TL;DR:** Design a RESTful backend for the Personal Expense Tracker using Serverless Framework (20 Lambdas, one per route), a DynamoDB single-table design with 3 GSIs covering all access patterns, and a layered architecture (handler → service → repository).
+# Backend API — Expense Tracker
 
 ---
 
