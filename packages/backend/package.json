@@ -1,33 +1,38 @@
 {
-  "name": "@expense-tracker/backend",
-  "version": "0.1.0",
+  "name": "@expense-tracker/new-backend",
+  "version": "1.0.0",
   "private": true,
-  "type": "module",
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "dev": "tsx watch src/server.ts",
-    "lint": "eslint src --ext .ts --max-warnings=0",
-    "migrate": "node --import tsx src/migrations/run.ts",
-    "test": "node --import tsx --test src/lib/date.test.ts src/modules/goals/forecast.test.ts",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "build": "tsc --noEmit",
+    "deploy": "serverless deploy",
+    "seed": "ts-node src/scripts/seed-categories.ts",
+    "test": "jest"
   },
   "dependencies": {
-    "@expense-tracker/shared": "workspace:*",
-    "bcryptjs": "^3.0.2",
-    "chrono-node": "^2.9.0",
-    "cors": "^2.8.5",
-    "dotenv": "^16.4.7",
-    "express": "^4.21.2",
+    "@aws-sdk/client-dynamodb": "^3.600.0",
+    "@aws-sdk/lib-dynamodb": "^3.600.0",
+    "@middy/core": "^5.4.3",
+    "@middy/http-error-handler": "^5.4.3",
+    "@middy/http-json-body-parser": "^5.4.3",
+    "bcryptjs": "^2.4.3",
     "jsonwebtoken": "^9.0.2",
-    "mongodb": "^6.13.0",
-    "zod": "^3.24.2"
+    "uuid": "^10.0.0",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
-    "@types/cors": "^2.8.17",
-    "@types/express": "^5.0.0",
-    "@types/jsonwebtoken": "^9.0.9",
-    "@types/node": "^22.13.5",
-    "tsx": "^4.19.2",
-    "typescript": "^5.7.3"
+    "@types/aws-lambda": "^8.10.143",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/jest": "^29.5.12",
+    "@types/jsonwebtoken": "^9.0.6",
+    "@types/node": "^20.14.0",
+    "@types/uuid": "^10.0.0",
+    "esbuild": "^0.21.5",
+    "jest": "^29.7.0",
+    "serverless": "^3.39.0",
+    "serverless-esbuild": "^1.52.1",
+    "serverless-offline": "^13.7.0",
+    "ts-jest": "^29.1.5",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.5"
   }
 }
