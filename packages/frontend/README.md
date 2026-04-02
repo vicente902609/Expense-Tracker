@@ -209,6 +209,8 @@ Token refresh is handled transparently inside the API client:
 
 > Public paths (`/auth/login`, `/auth/register`, `/auth/refresh`) are excluded from the refresh loop to prevent infinite retry.
 
+If a protected request returns **401** and there is **no refresh token** (e.g. storage was edited), the client still calls `forceSignOut()` so React returns to the login screen instead of staying in a broken “authenticated” state.
+
 ### Data fetching
 
 All server state lives in **React Query**. Query keys follow a flat convention:

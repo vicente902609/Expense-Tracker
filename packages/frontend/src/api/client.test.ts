@@ -108,6 +108,28 @@ describe("api client auth flow", () => {
     window.removeEventListener(SESSION_EXPIRED_EVENT, sessionExpiredListener);
   });
 
+  it("clears session on 401 when there is no refresh token (protected route)", async () => {
+    const fetchMock = vi.fn<typeof fetch>();
+    vi.stubGlobal("fetch", fetchMock);
+    getAccessTokenMock.mockReturnValue("stale-access");
+    getRefreshTokenMock.mockReturnValue(null);
+
+    fetchMock.mockResolvedValueOnce(
+      makeResponse(401, { message: "Unauthorized" }) as unknown as Response,
+    );
+
+    const sessionExpiredListener = vi.fn();
+    window.addEventListener(SESSION_EXPIRED_EVENT, sessionExpiredListener);
+
+    await expect(apiRequest("/expenses")).rejects.toThrow("Session expired. Please sign in again.");
+
+    expect(clearSessionMock).toHaveBeenCalledTimes(1);
+    expect(sessionExpiredListener).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    window.removeEventListener(SESSION_EXPIRED_EVENT, sessionExpiredListener);
+  });
+
   it("does not trigger refresh flow for public auth endpoints", async () => {
     const fetchMock = vi.fn<typeof fetch>();
     vi.stubGlobal("fetch", fetchMock);
