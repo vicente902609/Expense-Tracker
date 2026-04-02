@@ -8,7 +8,7 @@
     "dev": "tsx watch src/server.ts",
     "lint": "eslint src --ext .ts --max-warnings=0",
     "migrate": "node --import tsx src/migrations/run.ts",
-    "test": "node --import tsx --test src/lib/date.test.ts src/modules/goals/forecast.test.ts",
+    "test": "node --import tsx --test src/lib/date.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

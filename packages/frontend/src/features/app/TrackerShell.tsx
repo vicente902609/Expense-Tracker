@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { Expense, Goal } from "@expense-tracker/shared";
+import type { Expense } from "@expense-tracker/shared";
 import { alpha } from "@mui/material/styles";
 import { Box, BottomNavigation, BottomNavigationAction, Button, CircularProgress, Stack, Typography } from "@mui/material";
 import HomeRoundedIcon from "@mui/icons-material/HomeRounded";
@@ -9,14 +9,13 @@ import CategoryRoundedIcon from "@mui/icons-material/CategoryRounded";
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
 import { useQuery } from "@tanstack/react-query";
 
-import { listGoals } from "@/api/goals";
+import { getGoal } from "@/api/goals";
 import { useCategories } from "@/hooks/use-categories";
 import { appShellGradient, RADIUS_SHELL } from "@/theme/ui";
 import { CategoriesView } from "@/features/categories/CategoriesView";
 import { DashboardView } from "@/features/dashboard/DashboardView";
 import { ExpenseEditorDialog } from "@/features/expenses/ExpenseEditorDialog";
 import { ExpensesView } from "@/features/expenses/ExpensesView";
-import { GoalCompletionDialog } from "@/features/goals/GoalCompletionDialog";
 import { GoalSetupDialog } from "@/features/goals/GoalSetupDialog";
 import { ReportsView } from "@/features/reports/ReportsView";
 
@@ -39,21 +38,15 @@ export const TrackerShell = ({ onLogout }: TrackerShellProps) => {
   const [expenseEditorSession, setExpenseEditorSession] = useState(0);
   const [goalDialogOpen, setGoalDialogOpen] = useState(false);
   const [goalDialogSession, setGoalDialogSession] = useState(0);
-  const [newGoalDialogOpen, setNewGoalDialogOpen] = useState(false);
-  const [newGoalDialogSession, setNewGoalDialogSession] = useState(0);
-  const [goalCompletionOpen, setGoalCompletionOpen] = useState(false);
-  const [nextGoalInitialSavedAmount, setNextGoalInitialSavedAmount] = useState(0);
-  const [nextGoalSubtitle, setNextGoalSubtitle] = useState<string | undefined>(undefined);
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
   const { categoryPalette, custom, isLoading: categoriesLoading, predefined } = useCategories();
 
   const goalsQuery = useQuery({
     queryKey: ["goals"],
-    queryFn: listGoals,
+    queryFn: getGoal,
   });
 
-  const goals = goalsQuery.data ?? [];
-  const goal = goals[0];
+  const goal = goalsQuery.data ?? undefined;
   const predefinedNames = predefined.map((row) => row.name);
   const customNames = custom.map((row) => row.name);
   const availableCategories = [...new Set([...predefinedNames, ...customNames])];
@@ -67,21 +60,6 @@ export const TrackerShell = ({ onLogout }: TrackerShellProps) => {
   const openGoalDialog = () => {
     setGoalDialogSession((session) => session + 1);
     setGoalDialogOpen(true);
-  };
-
-  const openGoalCompletionDialog = () => {
-    if (!goal) {
-      return;
-    }
-    setGoalCompletionOpen(true);
-  };
-
-  const openNewGoalDialog = ({ savedAmount, subtitle }: { savedAmount: number; subtitle: string }) => {
-    setGoalCompletionOpen(false);
-    setNextGoalInitialSavedAmount(savedAmount);
-    setNextGoalSubtitle(subtitle);
-    setNewGoalDialogSession((session) => session + 1);
-    setNewGoalDialogOpen(true);
   };
 
   if (goalsQuery.isLoading || categoriesLoading) {
@@ -218,7 +196,6 @@ export const TrackerShell = ({ onLogout }: TrackerShellProps) => {
               <DashboardView
                 categoryPalette={categoryPalette}
                 goal={goal}
-                onCompleteGoal={openGoalCompletionDialog}
                 onOpenGoalDialog={openGoalDialog}
                 onOpenSmartEntry={() => openEditor()}
                 onSelectExpense={openEditor}
@@ -268,16 +245,6 @@ export const TrackerShell = ({ onLogout }: TrackerShellProps) => {
         onClose={() => setEditorOpen(false)}
       />
       <GoalSetupDialog key={goalDialogSession} existingGoal={goal} open={goalDialogOpen} onClose={() => setGoalDialogOpen(false)} />
-      <GoalSetupDialog
-        key={`new-${newGoalDialogSession}`}
-        initialValues={{ savedAmount: nextGoalInitialSavedAmount, targetExpense: goal?.targetExpense ?? 0 }}
-        open={newGoalDialogOpen}
-        submitLabel="Start goal"
-        subtitle={nextGoalSubtitle}
-        title="New goal"
-        onClose={() => setNewGoalDialogOpen(false)}
-      />
-      {goal ? <GoalCompletionDialog goal={goal as Goal} open={goalCompletionOpen} onClose={() => setGoalCompletionOpen(false)} onProceed={openNewGoalDialog} /> : null}
     </Box>
   );
 };

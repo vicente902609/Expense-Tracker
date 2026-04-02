@@ -1,24 +1,19 @@
 import { Router } from "express";
 
-import { AppError } from "../../lib/errors.js";
 import { asyncHandler } from "../../lib/http.js";
-import { createUserGoal, listUserGoals, updateUserGoal } from "./service.js";
+import { createUserGoal, deleteUserGoal, getUserGoal, updateUserGoal } from "./service.js";
 
 export const goalsRouter = Router();
-
-const getRouteParam = (value: string | string[] | undefined) => {
-  if (typeof value !== "string") {
-    throw new AppError("Invalid goal id", 400);
-  }
-
-  return value;
-};
 
 goalsRouter.get(
   "/",
   asyncHandler(async (request, response) => {
-    const goals = await listUserGoals(request.authUser!.id);
-    response.json(goals);
+    const goal = await getUserGoal(request.authUser!.id);
+    if (!goal) {
+      response.status(404).json({ message: "No goal found for this user" });
+      return;
+    }
+    response.json(goal);
   }),
 );
 
@@ -31,9 +26,17 @@ goalsRouter.post(
 );
 
 goalsRouter.put(
-  "/:goalId",
+  "/",
   asyncHandler(async (request, response) => {
-    const goal = await updateUserGoal(request.authUser!.id, getRouteParam(request.params.goalId), request.body);
+    const goal = await updateUserGoal(request.authUser!.id, request.body);
     response.json(goal);
+  }),
+);
+
+goalsRouter.delete(
+  "/",
+  asyncHandler(async (request, response) => {
+    await deleteUserGoal(request.authUser!.id);
+    response.status(204).send();
   }),
 );

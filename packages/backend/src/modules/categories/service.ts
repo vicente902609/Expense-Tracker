@@ -5,7 +5,7 @@ import { randomUUID } from "node:crypto";
 import { AppError } from "../../lib/errors.js";
 import { PREDEFINED_CATEGORY_SEED } from "./predefined-seed.js";
 import { recategorizeExpenseCategoryIds } from "../expenses/repository.js";
-import { recalculateGoalForecasts } from "../goals/service.js";
+import { recalculateGoalInsight } from "../goals/service.js";
 import { getUserCustomCategoryDocs, setUserCustomCategoryDocs, type UserCustomCategoryDoc } from "../users/repository.js";
 import {
   getPredefinedNameLowerSet,
@@ -96,7 +96,7 @@ export const updateCustomCategory = async (
     await recategorizeExpenseCategoryIds(userId, current.categoryId, predefinedMatch.categoryId);
     const filtered = docs.filter((_, i) => i !== index);
     await setUserCustomCategoryDocs(userId, filtered);
-    await recalculateGoalForecasts(userId);
+    await recalculateGoalInsight(userId);
     return listCategories(userId);
   }
 
@@ -118,7 +118,7 @@ export const updateCustomCategory = async (
 
   const nextDocs = docs.map((entry, i) => (i === index ? updated : entry));
   await setUserCustomCategoryDocs(userId, nextDocs);
-  await recalculateGoalForecasts(userId);
+  await recalculateGoalInsight(userId);
   return {
     categoryId: updated.categoryId,
     name: updated.name,
@@ -140,6 +140,6 @@ export const deleteCustomCategory = async (userId: string, categoryId: string) =
     userId,
     docs.filter((entry) => entry.categoryId !== categoryId),
   );
-  await recalculateGoalForecasts(userId);
+  await recalculateGoalInsight(userId);
   return { categoryId };
 };

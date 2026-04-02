@@ -5,7 +5,7 @@ import {
 } from "@expense-tracker/shared";
 
 import { AppError } from "../../lib/errors.js";
-import { recalculateGoalForecasts } from "../goals/service.js";
+import { recalculateGoalInsight } from "../goals/service.js";
 import {
   countAndSumExpenses,
   createExpense,
@@ -39,7 +39,7 @@ export const getUserExpense = async (userId: string, expenseId: string) => {
 export const createUserExpense = async (userId: string, payload: unknown) => {
   const input = createExpenseBodySchema.parse(payload);
   const expense = await createExpense(userId, input);
-  await recalculateGoalForecasts(userId);
+  await recalculateGoalInsight(userId);
   return expense;
 };
 
@@ -68,7 +68,7 @@ export const updateUserExpense = async (userId: string, expenseId: string, paylo
     throw new AppError("Expense not found", 404);
   }
 
-  await recalculateGoalForecasts(userId);
+  await recalculateGoalInsight(userId);
 
   return expense;
 };
@@ -80,6 +80,6 @@ export const deleteUserExpense = async (userId: string, expenseId: string) => {
     throw new AppError("Expense not found", 404);
   }
 
-  await recalculateGoalForecasts(userId);
+  await recalculateGoalInsight(userId);
   return { expenseId };
 };

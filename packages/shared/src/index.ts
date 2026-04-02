@@ -391,36 +391,40 @@ export type PutCustomCategoryBody = z.infer<typeof putCustomCategoryBodySchema>;
 
 export type AddCustomCategoryInput = z.infer<typeof addCustomCategorySchema>;
 
-export const goalInputSchema = z.object({
+/** POST /goals — one goal per user (409 if a goal already exists). */
+export const goalCreateBodySchema = z.object({
   name: z.string().trim().min(1).max(80),
-  targetAmount: z.number().positive(),
-  targetDate: isoDateSchema.optional(),
-  savedAmount: z.number().nonnegative().optional(),
-  targetExpense: z.number().nonnegative(),
+  targetExpense: z.number().positive(),
 });
 
-export const goalProjectionSchema = z.object({
-  monthlySavingsRate: z.number(),
-  projectedEta: isoDateSchema.nullable(),
-  isOnTrack: z.boolean(),
-  shortfallAmount: z.number().nonnegative(),
-  paceWindowDays: z.number().int().positive(),
-});
+/** PUT /goals — at least one field required. */
+export const goalUpdateBodySchema = z
+  .object({
+    name: z.string().trim().min(1).max(80).optional(),
+    targetExpense: z.number().positive().optional(),
+  })
+  .refine((data) => data.name !== undefined || data.targetExpense !== undefined, {
+    message: "At least one field (name or targetExpense) must be provided",
+  });
 
-export const goalSchema = goalInputSchema.extend({
-  id: z.string(),
-  userId: z.string(),
-  currentAmount: z.number().nonnegative(),
-  status: z.enum(["on_track", "at_risk", "achieved", "insufficient_data"]),
-  aiEtaInsight: z.string().min(1),
-  forecast: goalProjectionSchema,
-  updatedAt: z.string(),
+/** GET /goals — monthly spending cap + server-computed recommendation text. */
+export const goalSchema = z.object({
+  name: z.string(),
+  targetExpense: z.number().positive(),
+  insight: z.string(),
+  insightUpdatedAt: z.string(),
   createdAt: z.string(),
+  updatedAt: z.string(),
 });
 
-export type GoalInput = z.infer<typeof goalInputSchema>;
-export type GoalProjection = z.infer<typeof goalProjectionSchema>;
+export type GoalCreateBody = z.infer<typeof goalCreateBodySchema>;
+export type GoalUpdateBody = z.infer<typeof goalUpdateBodySchema>;
 export type Goal = z.infer<typeof goalSchema>;
+
+/** @deprecated Use `goalCreateBodySchema` / `goalUpdateBodySchema`. */
+export const goalInputSchema = goalCreateBodySchema;
+/** @deprecated Use `GoalCreateBody`. */
+export type GoalInput = GoalCreateBody;
 
 export const parseExpenseRequestSchema = z.object({
   text: z.string().trim().min(3).max(500),

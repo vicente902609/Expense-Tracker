@@ -244,6 +244,25 @@ export const deleteExpense = async (userId: string, expenseId: string) => {
   return result.deletedCount > 0;
 };
 
+/** All expenses whose calendar `date` falls in `monthKey` (YYYY-MM). */
+export const findExpensesInMonth = async (userId: string, monthKey: string): Promise<Expense[]> => {
+  const [y, m] = monthKey.split("-").map(Number);
+  if (!Number.isFinite(y) || !Number.isFinite(m) || m < 1 || m > 12) {
+    return [];
+  }
+  const lastDay = new Date(y, m, 0).getDate();
+  const start = `${monthKey}-01`;
+  const end = `${monthKey}-${String(lastDay).padStart(2, "0")}`;
+  const collection = await getExpensesCollection();
+  const docs = await collection
+    .find({
+      userId: toObjectId(userId),
+      date: { $gte: start, $lte: end },
+    })
+    .toArray();
+  return docs.map((d) => mapExpense(d as ExpenseDocument));
+};
+
 export const recategorizeExpenseCategoryIds = async (userId: string, fromCategoryId: string, toCategoryId: string) => {
   const collection = await getExpensesCollection();
   const updatedAt = new Date().toISOString();
