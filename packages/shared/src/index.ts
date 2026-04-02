@@ -242,7 +242,7 @@ export const userSchema = z.object({
 
 export type User = z.infer<typeof userSchema>;
 
-/** Expense row returned by GET/POST/PUT (new-backend shape). */
+/** Expense row returned by GET/POST/PUT (backend shape). */
 export const expenseApiSchema = z.object({
   expenseId: z.string(),
   amount: z.number().positive(),
@@ -265,7 +265,7 @@ export const createExpenseBodySchema = z.object({
 
 export type CreateExpenseBody = z.infer<typeof createExpenseBodySchema>;
 
-/** PUT /expenses/:expenseId — at least one field (new-backend). */
+/** PUT /expenses/:expenseId — at least one field (backend). */
 export const updateExpenseBodySchema = z
   .object({
     amount: z.number().positive().optional(),
@@ -279,7 +279,7 @@ export const updateExpenseBodySchema = z
 
 export type UpdateExpenseBody = z.infer<typeof updateExpenseBodySchema>;
 
-/** GET /expenses query (new-backend). */
+/** GET /expenses query (backend). */
 export const listExpensesQuerySchema = z.object({
   startDate: isoDateSchema.optional(),
   endDate: isoDateSchema.optional(),
@@ -379,13 +379,13 @@ export const categoriesResponseSchema = z.object({
 
 export type CategoriesResponse = z.infer<typeof categoriesResponseSchema>;
 
-/** POST /categories (new-backend): both name and hex color are required. */
+/** POST /categories (backend): both name and hex color are required. */
 export const addCustomCategorySchema = z.object({
   name: customCategoryNameSchema,
   color: categoryHexColorSchema,
 });
 
-/** PUT /categories/:categoryId (new-backend): full replacement — name and hex color both required. */
+/** PUT /categories/:categoryId (backend): full replacement — name and hex color both required. */
 export const putCustomCategoryBodySchema = addCustomCategorySchema;
 export type PutCustomCategoryBody = z.infer<typeof putCustomCategoryBodySchema>;
 

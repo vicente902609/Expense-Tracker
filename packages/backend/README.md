@@ -1,6 +1,4 @@
-# Plan: Backend API — Expense Tracker
-
-**TL;DR:** Design a RESTful backend for the Personal Expense Tracker using Serverless Framework (20 Lambdas, one per route), a DynamoDB single-table design with 3 GSIs covering all access patterns, and a layered architecture (handler → service → repository).
+# Backend API — Expense Tracker
 
 ---
 
@@ -181,7 +179,7 @@ The fixed `SK=GOAL` enforces the 1:1 constraint at the data layer — a `PutItem
 Each handler is a thin entry point — parses input, calls service, returns HTTP response.
 
 ```
-packages/new-backend/src/
+packages/backend/src/
   handlers/
     auth/          register.ts  login.ts  refresh.ts  logout.ts
     categories/    list.ts  create.ts  update.ts  delete.ts
@@ -234,17 +232,17 @@ packages/new-backend/src/
 
 ## Relevant Files to Create
 
-- `packages/new-backend/serverless.yml` — provider, functions (16 entries), DynamoDB resource with all GSIs, IAM, env vars
-- `packages/new-backend/src/lib/dynamo.ts` — singleton `DynamoDBDocumentClient`
-- `packages/new-backend/src/repositories/*.ts` — all DynamoDB queries
-- `packages/new-backend/src/services/*.ts` — business logic
-- `packages/new-backend/src/handlers/**/*.ts` — 20 thin Lambda handlers
-- `packages/new-backend/src/models/goal.ts` — `Goal` interface (`name`, `targetExpense`, `insight`, `insightUpdatedAt`, `createdAt`, `updatedAt`)
-- `packages/new-backend/src/middleware/auth.ts` — Middy JWT middleware
-- `packages/new-backend/src/models/*.ts` — TypeScript interfaces
-- `packages/new-backend/src/scripts/seed-categories.ts` — one-shot `BatchWriteItem` script seeding 13 predefined category items under `PK=CATEGORY#PREDEFINED`; idempotent (condition: `attribute_not_exists(PK)`)
-- `packages/new-backend/.env.example` — `JWT_SECRET`, `REFRESH_TOKEN_SECRET`, `DYNAMODB_TABLE_NAME`, `AWS_REGION`
-- `packages/new-backend/tsconfig.json`, `jest.config.ts`, `package.json`
+- `packages/backend/serverless.yml` — provider, functions (16 entries), DynamoDB resource with all GSIs, IAM, env vars
+- `packages/backend/src/lib/dynamo.ts` — singleton `DynamoDBDocumentClient`
+- `packages/backend/src/repositories/*.ts` — all DynamoDB queries
+- `packages/backend/src/services/*.ts` — business logic
+- `packages/backend/src/handlers/**/*.ts` — 20 thin Lambda handlers
+- `packages/backend/src/models/goal.ts` — `Goal` interface (`name`, `targetExpense`, `insight`, `insightUpdatedAt`, `createdAt`, `updatedAt`)
+- `packages/backend/src/middleware/auth.ts` — Middy JWT middleware
+- `packages/backend/src/models/*.ts` — TypeScript interfaces
+- `packages/backend/src/scripts/seed-categories.ts` — one-shot `BatchWriteItem` script seeding 13 predefined category items under `PK=CATEGORY#PREDEFINED`; idempotent (condition: `attribute_not_exists(PK)`)
+- `packages/backend/.env.example` — `JWT_SECRET`, `REFRESH_TOKEN_SECRET`, `DYNAMODB_TABLE_NAME`, `AWS_REGION`
+- `packages/backend/tsconfig.json`, `jest.config.ts`, `package.json`
 
 ---
 
@@ -254,7 +252,7 @@ packages/new-backend/src/
 2. `eslint --fix src` — zero lint warnings
 3. `pnpm test` — unit tests for all services + repositories pass
 4. `serverless offline` — all 20 routes respond correctly locally
-5. Run `pnpm seed` (in `packages/new-backend`) — 13 predefined category items written to DynamoDB; re-run is a no-op
+5. Run `pnpm seed` (in `packages/backend`) — 13 predefined category items written to DynamoDB; re-run is a no-op
 6. Manual test: `GET /categories` → `predefined` array contains 13 items, `custom` array is empty for a new user
 7. Manual test: register → login → create category → create expense → list with date filter → check reports endpoint
 8. Manual test: `POST /goals` → `GET /goals` returns goal with insight; `POST /expenses` (new expense) → `GET /goals` returns updated `insight` and `insightUpdatedAt`; `DELETE /goals` → `GET /goals` returns `404`
