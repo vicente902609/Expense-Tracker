@@ -1,5 +1,5 @@
 {
-  "name": "@expense-tracker/new-backend",
+  "name": "@expense-tracker/backend",
   "version": "1.0.0",
   "private": true,
   "scripts": {

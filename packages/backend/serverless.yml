@@ -168,6 +168,11 @@ functions:
           method: POST
           path: /ai/parse-expense
 
+package:
+  patterns:
+    - '!src/**/__tests__/**'
+    - '!src/**/*.test.ts'
+
 custom:
   esbuild:
     bundle: true
