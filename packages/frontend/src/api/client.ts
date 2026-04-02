@@ -130,3 +130,32 @@ export const apiRequest = async <T>(path: string, options: RequestOptions = {}, 
 
   return unwrapData<T>(json);
 };
+
+/** GET helper: returns `null` on HTTP 404 (e.g. no goal yet). Same refresh-token behavior as {@link apiRequest}. */
+export const apiGetAllow404 = async <T>(path: string, retried = false): Promise<T | null> => {
+  const token = authStorage.getAccessToken();
+  const response = await fetch(`${env.apiBaseUrl}${path}`, {
+    method: "GET",
+    headers: buildRequestHeaders({}, token),
+  });
+
+  if (response.status === 404) {
+    return null;
+  }
+
+  const json = await response.json().catch(() => null);
+
+  if (response.status === 401 && !retried && !isPublicAuthPath(path) && authStorage.getRefreshToken()) {
+    const refreshed = await postRefresh();
+    if (refreshed) {
+      return apiGetAllow404<T>(path, true);
+    }
+    throw new Error("Session expired. Please sign in again.");
+  }
+
+  if (!response.ok) {
+    throwFromFailedResponse(json);
+  }
+
+  return unwrapData<T>(json);
+};

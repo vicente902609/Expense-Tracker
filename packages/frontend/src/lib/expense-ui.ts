@@ -1,4 +1,4 @@
-import { expenseCategoryValues, type Expense, type Goal } from "@expense-tracker/shared";
+import { expenseCategoryValues, type Expense } from "@expense-tracker/shared";
 
 export const predefinedCategories = expenseCategoryValues;
 
@@ -124,12 +124,13 @@ export const formatSpendVsPriorMonth = (currentMonthSpend: number, priorMonthSpe
   return `${direction} ${Math.abs(pct)}% vs prior month`;
 };
 
-export const getGoalProgress = (goal: Goal) => {
-  if (goal.targetAmount <= 0) {
+/** Progress bar fill: month-to-date spend vs monthly cap (capped at 100% for the bar). */
+export const getMonthlySpendProgressPercent = (spent: number, monthlyCap: number) => {
+  if (monthlyCap <= 0) {
     return 0;
   }
 
-  return Math.min((goal.currentAmount / goal.targetAmount) * 100, 100);
+  return Math.min((spent / monthlyCap) * 100, 100);
 };
 
 export const getMonthlySeries = (expenses: Expense[]) => {

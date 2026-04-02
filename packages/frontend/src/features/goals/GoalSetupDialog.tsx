@@ -1,24 +1,18 @@
-import { goalInputSchema, type Goal } from "@expense-tracker/shared";
+import { goalCreateBodySchema, goalUpdateBodySchema, type Goal } from "@expense-tracker/shared";
 import { useState } from "react";
 import { Alert, Box, Button, Dialog, DialogContent, IconButton, Stack, TextField, Typography, useMediaQuery } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { createGoal, updateGoal } from "@/api/goals";
+import { createGoal, deleteGoal, updateGoal } from "@/api/goals";
 import { amountTextFieldProps } from "@/lib/expense-ui";
 
 type GoalSetupDialogProps = {
   existingGoal?: Goal;
   open: boolean;
   onClose: () => void;
-  initialValues?: Partial<{
-    name: string;
-    targetAmount: number;
-    targetDate: string;
-    savedAmount: number;
-    targetExpense: number;
-  }>;
+  initialValues?: Partial<{ name: string; targetExpense: number }>;
   title?: string;
   subtitle?: string;
   submitLabel?: string;
@@ -30,41 +24,59 @@ export const GoalSetupDialog = ({ existingGoal, open, onClose, initialValues, ti
   const queryClient = useQueryClient();
   const [form, setForm] = useState(() => ({
     goalName: existingGoal?.name ?? initialValues?.name ?? "",
-    targetAmount: existingGoal?.targetAmount?.toString() ?? (initialValues?.targetAmount != null ? String(initialValues.targetAmount) : ""),
-    targetDate: existingGoal?.targetDate ?? initialValues?.targetDate ?? "",
-    savedAmount: existingGoal?.savedAmount?.toString() ?? (initialValues?.savedAmount != null ? String(initialValues.savedAmount) : ""),
     targetExpense: existingGoal?.targetExpense?.toString() ?? (initialValues?.targetExpense != null ? String(initialValues.targetExpense) : ""),
   }));
 
-  const mutation = useMutation({
+  const saveMutation = useMutation({
     mutationFn: async () => {
-      const parsed = goalInputSchema.safeParse({
-        name: form.goalName,
-        targetAmount: Number(form.targetAmount),
-        targetDate: form.targetDate || undefined,
-        savedAmount: form.savedAmount ? Number(form.savedAmount) : undefined,
+      if (existingGoal) {
+        const parsed = goalUpdateBodySchema.safeParse({
+          name: form.goalName.trim(),
+          targetExpense: Number(form.targetExpense),
+        });
+        if (!parsed.success) {
+          const message = parsed.error.issues[0]?.message ?? "Check your goal fields.";
+          throw new Error(message);
+        }
+        await updateGoal(parsed.data);
+        return;
+      }
+
+      const parsed = goalCreateBodySchema.safeParse({
+        name: form.goalName.trim(),
         targetExpense: Number(form.targetExpense),
       });
-
       if (!parsed.success) {
         const message = parsed.error.issues[0]?.message ?? "Check your goal fields.";
         throw new Error(message);
       }
-
-      const payload = parsed.data;
-
-      if (existingGoal) {
-        await updateGoal(existingGoal.id, payload);
-        return;
-      }
-
-      await createGoal(payload);
+      await createGoal(parsed.data);
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["goals"] });
       onClose();
     },
   });
+
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteGoal(),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["goals"] });
+      onClose();
+    },
+  });
+
+  const handleDelete = () => {
+    if (!existingGoal) {
+      return;
+    }
+    if (!window.confirm("Remove your monthly budget? You can set a new one anytime.")) {
+      return;
+    }
+    deleteMutation.mutate();
+  };
+
+  const canSubmit = form.goalName.trim().length > 0 && form.targetExpense.trim() !== "" && Number(form.targetExpense) > 0;
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="xs" fullScreen={fullScreen} scroll="paper">
@@ -85,7 +97,7 @@ export const GoalSetupDialog = ({ existingGoal, open, onClose, initialValues, ti
               borderBottom: `1px solid ${alpha(t.palette.common.white, 0.08)}`,
             })}
           >
-            <Typography variant="h6">{title ?? (existingGoal ? "Edit goal" : "Create goal")}</Typography>
+            <Typography variant="h6">{title ?? (existingGoal ? "Edit monthly budget" : "Monthly budget")}</Typography>
             <IconButton onClick={onClose} color="inherit" sx={{ minWidth: 44, minHeight: 44 }}>
               <CloseRoundedIcon />
             </IconButton>
@@ -97,54 +109,44 @@ export const GoalSetupDialog = ({ existingGoal, open, onClose, initialValues, ti
                 {subtitle}
               </Typography>
             ) : null}
-            <TextField label="Goal name" value={form.goalName} onChange={(event) => setForm((current) => ({ ...current, goalName: event.target.value }))} />
-
-            <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25}>
-              <TextField
-                label="Target amount"
-                {...amountTextFieldProps}
-                value={form.targetAmount}
-                onChange={(event) => setForm((current) => ({ ...current, targetAmount: event.target.value }))}
-                sx={{ flex: 1 }}
-              />
-              <TextField
-                label="Deadline"
-                type="date"
-                value={form.targetDate}
-                onChange={(event) => setForm((current) => ({ ...current, targetDate: event.target.value }))}
-                InputLabelProps={{ shrink: true }}
-                sx={{ flex: 1 }}
-              />
-            </Stack>
+            <TextField label="Name" value={form.goalName} onChange={(event) => setForm((current) => ({ ...current, goalName: event.target.value }))} />
 
             <TextField
               label="Monthly spending target"
               {...amountTextFieldProps}
+              inputProps={{ ...amountTextFieldProps.inputProps, min: 0.01, step: 0.01 }}
               value={form.targetExpense}
               onChange={(event) => setForm((current) => ({ ...current, targetExpense: event.target.value }))}
-              helperText="Anything you spend under this each month counts as savings toward your goal."
-            />
-            <TextField
-              label="Already saved (optional)"
-              {...amountTextFieldProps}
-              value={form.savedAmount}
-              onChange={(event) => setForm((current) => ({ ...current, savedAmount: event.target.value }))}
+              helperText="We compare this to your expenses in the current calendar month and refresh tips when spending changes."
             />
 
-            {mutation.error ? <Alert severity="error">{mutation.error.message}</Alert> : null}
+            {saveMutation.error ? <Alert severity="error">{saveMutation.error.message}</Alert> : null}
+            {deleteMutation.error ? <Alert severity="error">{deleteMutation.error.message}</Alert> : null}
 
             <Stack direction="row" spacing={1.25}>
-              <Button variant="outlined" color="inherit" onClick={onClose} sx={{ minHeight: 48, flex: 1 }}>
-                {existingGoal ? "Delete goal" : "Cancel"}
-              </Button>
+              {existingGoal ? (
+                <Button
+                  variant="outlined"
+                  color="error"
+                  onClick={handleDelete}
+                  disabled={deleteMutation.isPending || saveMutation.isPending}
+                  sx={{ minHeight: 48, flex: 1 }}
+                >
+                  {deleteMutation.isPending ? "Removing…" : "Remove"}
+                </Button>
+              ) : (
+                <Button variant="outlined" color="inherit" onClick={onClose} sx={{ minHeight: 48, flex: 1 }}>
+                  Cancel
+                </Button>
+              )}
               <Button
                 variant="contained"
                 color="primary"
-                onClick={() => mutation.mutate()}
-                disabled={mutation.isPending || !form.goalName.trim() || !form.targetAmount || !form.targetExpense}
+                onClick={() => saveMutation.mutate()}
+                disabled={saveMutation.isPending || deleteMutation.isPending || !canSubmit}
                 sx={{ minHeight: 48, flex: 2 }}
               >
-                {mutation.isPending ? "Saving..." : submitLabel ?? (existingGoal ? "Save changes" : "Create goal")}
+                {saveMutation.isPending ? "Saving…" : submitLabel ?? (existingGoal ? "Save" : "Create")}
               </Button>
             </Stack>
           </Stack>

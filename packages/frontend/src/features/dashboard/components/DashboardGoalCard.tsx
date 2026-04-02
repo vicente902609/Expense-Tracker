@@ -2,32 +2,33 @@ import type { Goal } from "@expense-tracker/shared";
 import { alpha } from "@mui/material/styles";
 import { Box, Button, LinearProgress, Stack, Typography } from "@mui/material";
 
-import { formatCurrency, formatShortDate, getGoalProgress } from "@/lib/expense-ui";
+import { formatCurrency, getMonthlySpendProgressPercent } from "@/lib/expense-ui";
 import { RADIUS_CHIP, RADIUS_INNER, sectionLabelSx, surfaceCard } from "@/theme/ui";
 
 import { getGoalCardStatus } from "@/features/dashboard/components/goal-card-status";
 
 type DashboardGoalCardProps = {
   goal: Goal | undefined;
+  /** Month-to-date spending (same basis as “This month” stats). */
+  monthSpent: number;
   onOpenGoalDialog: () => void;
-  onCompleteGoal: () => void;
 };
 
-export const DashboardGoalCard = ({ goal, onOpenGoalDialog, onCompleteGoal }: DashboardGoalCardProps) => (
+export const DashboardGoalCard = ({ goal, monthSpent, onOpenGoalDialog }: DashboardGoalCardProps) => (
   <>
-    <Typography sx={(theme) => ({ ...sectionLabelSx(theme), pt: 0.5 })}>Your goal</Typography>
+    <Typography sx={(theme) => ({ ...sectionLabelSx(theme), pt: 0.5 })}>Monthly budget</Typography>
 
     <Box sx={(theme) => ({ p: { xs: 1.75, sm: 2 }, ...surfaceCard(theme) })}>
       {goal ? (
-        <GoalCardBody goal={goal} onOpenGoalDialog={onOpenGoalDialog} onCompleteGoal={onCompleteGoal} />
+        <GoalCardBody goal={goal} monthSpent={monthSpent} onOpenGoalDialog={onOpenGoalDialog} />
       ) : (
         <Stack spacing={1.5}>
-          <Typography sx={{ fontWeight: 700 }}>No goal yet</Typography>
+          <Typography sx={{ fontWeight: 700 }}>No monthly target yet</Typography>
           <Typography color="text.secondary" variant="body2">
-            Set your monthly target expense and first goal to unlock the ETA forecast card.
+            Set a name and monthly spending cap. We&apos;ll compare this month&apos;s expenses to that cap and suggest where to adjust.
           </Typography>
           <Button variant="contained" color="secondary" onClick={onOpenGoalDialog} sx={{ minHeight: 44, alignSelf: "flex-start" }}>
-            Set up goal
+            Set monthly budget
           </Button>
         </Stack>
       )}
@@ -37,23 +38,23 @@ export const DashboardGoalCard = ({ goal, onOpenGoalDialog, onCompleteGoal }: Da
 
 type GoalCardBodyProps = {
   goal: Goal;
+  monthSpent: number;
   onOpenGoalDialog: () => void;
-  onCompleteGoal: () => void;
 };
 
-const GoalCardBody = ({ goal, onOpenGoalDialog, onCompleteGoal }: GoalCardBodyProps) => {
-  const { progress, isReached, isAlmost, chipLabel, chipPalette } = getGoalCardStatus(goal);
+const GoalCardBody = ({ goal, monthSpent, onOpenGoalDialog }: GoalCardBodyProps) => {
+  const { progress, isOverCap, chipLabel, chipPalette } = getGoalCardStatus(goal, monthSpent);
   const paletteKey = chipPalette;
+  const remaining = goal.targetExpense - monthSpent;
+  const barValue = getMonthlySpendProgressPercent(monthSpent, goal.targetExpense);
 
   return (
     <Stack spacing={1.5}>
       <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }}>
         <Box sx={{ minWidth: 0 }}>
-          <Typography sx={{ fontWeight: 700, fontSize: "1.05rem" }}>
-            {goal.name} · {formatCurrency(goal.targetAmount)}
-          </Typography>
+          <Typography sx={{ fontWeight: 700, fontSize: "1.05rem" }}>{goal.name}</Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
-            {goal.targetDate ? `Target ${formatShortDate(goal.targetDate)}` : "No deadline"} · Expense cap {formatCurrency(goal.targetExpense)}/mo
+            Target {formatCurrency(goal.targetExpense)} this month · spent {formatCurrency(monthSpent)}
           </Typography>
         </Box>
         <Box
@@ -76,7 +77,7 @@ const GoalCardBody = ({ goal, onOpenGoalDialog, onCompleteGoal }: GoalCardBodyPr
 
       <LinearProgress
         variant="determinate"
-        value={getGoalProgress(goal)}
+        value={barValue}
         sx={(theme) => ({
           height: 10,
           borderRadius: "5px",
@@ -90,31 +91,32 @@ const GoalCardBody = ({ goal, onOpenGoalDialog, onCompleteGoal }: GoalCardBodyPr
 
       <Stack direction="row" justifyContent="space-between" flexWrap="wrap" useFlexGap>
         <Typography variant="body2" color="text.secondary">
-          {formatCurrency(goal.currentAmount)} saved
+          {progress}% of cap used
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          {progress}% · {formatCurrency(Math.max(goal.targetAmount - goal.currentAmount, 0))} to go
+          {remaining >= 0
+            ? `${formatCurrency(remaining)} left this month`
+            : `${formatCurrency(Math.abs(remaining))} over cap`}
         </Typography>
       </Stack>
 
       <Box sx={(theme) => ({ borderRadius: RADIUS_INNER, p: 1.5, bgcolor: alpha(theme.palette.common.white, 0.04), border: `1px solid ${alpha(theme.palette.common.white, 0.06)}` })}>
         <Typography variant="body2" sx={{ lineHeight: 1.55 }}>
-          {isReached
-            ? "You hit your goal. Ready to start your next goal?"
-            : isAlmost
-              ? `You're ${formatCurrency(Math.max(goal.targetAmount - goal.currentAmount, 0))} away — about one more month at your current pace.`
-              : goal.aiEtaInsight}
+          {goal.insight}
+        </Typography>
+        <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.75 }}>
+          Updated {new Date(goal.insightUpdatedAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}
         </Typography>
       </Box>
 
-      <Stack direction="row" justifyContent="space-between" spacing={1.25}>
+      <Stack direction="row" justifyContent="flex-start" spacing={1.25}>
         <Button color="inherit" onClick={onOpenGoalDialog} sx={{ minHeight: 44 }}>
-          Edit goal
+          Edit budget
         </Button>
-        {isAlmost || isReached ? (
-          <Button variant="outlined" color="inherit" onClick={onCompleteGoal} sx={{ minHeight: 44 }}>
-            {isReached ? "★ Complete goal" : "Mark as complete"}
-          </Button>
+        {isOverCap ? (
+          <Typography variant="body2" color="error.light" sx={{ alignSelf: "center" }}>
+            Trim spending or raise your target in settings.
+          </Typography>
         ) : null}
       </Stack>
     </Stack>

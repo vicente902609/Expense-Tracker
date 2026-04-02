@@ -1,7 +1,11 @@
-import type { Goal, GoalInput } from "@expense-tracker/shared";
+import type { Goal, GoalCreateBody, GoalUpdateBody } from "@expense-tracker/shared";
 
-import { apiRequest } from "@/api/client";
+import { apiGetAllow404, apiRequest } from "@/api/client";
 
-export const listGoals = () => apiRequest<Goal[]>("/goals");
-export const createGoal = (payload: GoalInput) => apiRequest<Goal>("/goals", { method: "POST", body: payload });
-export const updateGoal = (goalId: string, payload: GoalInput) => apiRequest<Goal>(`/goals/${goalId}`, { method: "PUT", body: payload });
+export const getGoal = () => apiGetAllow404<Goal>("/goals");
+
+export const createGoal = (payload: GoalCreateBody) => apiRequest<Goal>("/goals", { method: "POST", body: payload });
+
+export const updateGoal = (payload: GoalUpdateBody) => apiRequest<Goal>("/goals", { method: "PUT", body: payload });
+
+export const deleteGoal = () => apiRequest<void>("/goals", { method: "DELETE" });

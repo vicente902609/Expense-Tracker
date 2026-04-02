@@ -17,7 +17,6 @@ type DashboardViewProps = {
   categoryPalette: readonly CategoryPaletteEntry[];
   goal?: Goal;
   onOpenGoalDialog: () => void;
-  onCompleteGoal: () => void;
   onOpenSmartEntry: () => void;
   onSelectExpense: (expense: Expense) => void;
   onViewExpenses: () => void;
@@ -27,7 +26,6 @@ export const DashboardView = ({
   categoryPalette,
   goal,
   onOpenGoalDialog,
-  onCompleteGoal,
   onOpenSmartEntry,
   onSelectExpense,
   onViewExpenses,
@@ -51,7 +49,7 @@ export const DashboardView = ({
   return (
     <Stack spacing={0}>
       <Stack spacing={2.25} sx={{ px: { xs: 2, md: 3 }, py: { xs: 2, md: 3 } }}>
-        <DashboardGoalCard goal={goal} onCompleteGoal={onCompleteGoal} onOpenGoalDialog={onOpenGoalDialog} />
+        <DashboardGoalCard goal={goal} monthSpent={spent} onOpenGoalDialog={onOpenGoalDialog} />
 
         <Typography sx={(theme) => sectionLabelSx(theme)}>This month</Typography>
 
